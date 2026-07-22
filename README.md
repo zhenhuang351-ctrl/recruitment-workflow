@@ -21,7 +21,7 @@ workflow/
 ├── AGENTS.md                 # AI 的工作入口：路由、必读文件、事实源与人工确认边界
 ├── 00-招聘规则.md             # 全局招聘规则：年龄、年限、隐私、流程状态与人工决策边界
 ├── README.md                 # 可单独复制 workflow/ 时的精简使用说明；完整说明见本文件
-├── templates/                # 岗位澄清、简历评估、电话沟通、面试反馈等可复制模板
+├── templates/                # 岗位澄清、简历评估、电话沟通、Offer/入职、面试反馈等可复制模板
 ├── scripts/                  # 创建台账、创建正式复盘看板、同步台账数据的本地脚本
 ├── roles/<岗位名称>/
 │   ├── CONTEXT.md            # 已确认规则、待确认问题、下一步
@@ -67,7 +67,7 @@ Skill 定义在 [workflow/skills](workflow/skills)。复制目录到支持该格
 
 1. 复制 `workflow/templates` 新建一个岗位目录，并创建该岗位专属的 `candidate-ledger.xlsx`。
 2. 在 AI 对话中让它先读取 `workflow/AGENTS.md`，然后输入岗位名称、JD 和背景信息。
-3. 按“澄清 → 确认标准 → 简历评估 → 电话回写 → 面试反馈 → 复盘”推进。录入简历时必须补齐简历来源与简历收取时间；每轮完成后把确认的事实写回本地文件。
+3. 按“澄清 → 确认标准 → 简历评估 → 电话回写 → 面试反馈/决策会 → Offer/入职 → 复盘”推进。录入简历时必须补齐简历来源与简历收取时间；每轮完成后把确认的事实写回本地文件。
 4. 从正式招聘复盘看板模板创建该岗位的 `index.html`，同步台账后查看招聘漏斗、阶段时效、简历来源、流失原因和待办。
 
 ### 创建台账与正式复盘看板
@@ -75,7 +75,7 @@ Skill 定义在 [workflow/skills](workflow/skills)。复制目录到支持该格
 岗位澄清并确认 `PIPELINE.json` 后，依次运行：
 
 ```powershell
-node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --pipeline "岗位/岗位名称/PIPELINE.json" --out "岗位/岗位名称/candidate-ledger.xlsx"
+node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --pipeline "岗位/岗位名称/PIPELINE.json" --out "岗位/岗位名称/candidate-ledger.xlsx" --capacity 1000
 
 node workflow/scripts/create-review-dashboard.mjs --out "岗位/岗位名称/index.html"
 
@@ -85,13 +85,15 @@ node workflow/scripts/sync-dashboard-data.mjs `
   --role "岗位名称"
 ```
 
-每次由 AI 和招聘者确认后更新台账，再运行最后一条同步命令。看板读取 Excel 中的主阶段、阶段状态、简历来源、收取时间和终止原因，并使用同一份阶段顺序生成漏斗。
+每次由 AI 和招聘者确认后更新台账，再运行最后一条同步命令。`--capacity` 可按预计候选人数调整，默认值为 1000。看板读取 Excel 中的主阶段、阶段状态、简历来源、收取时间和终止原因，并使用同一份阶段顺序生成漏斗；每次同步前会在同目录保留 `index.html.bak` 备份。
 
 ## 验证
 
-安装 Node.js 后运行：
+安装 Node.js 18 或更高版本后运行：
 
 ```bash
-npm.cmd install
-npm.cmd test
+npm install
+npm test
 ```
+
+若 Windows PowerShell 因执行策略无法运行 `npm`，可使用 `npm.cmd install` 与 `npm.cmd test`。

@@ -13,4 +13,17 @@ export function normalizePipeline(input) {
   return { stages, statuses };
 }
 export const stageLabels = (pipeline) => pipeline.stages.map(({ id, name }) => `${id}-${name}`);
-export async function readPipeline(filePath) { return normalizePipeline(JSON.parse(await fs.readFile(filePath, "utf8"))); }
+export async function readPipeline(filePath) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await fs.readFile(filePath, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") throw new Error(`流程配置文件不存在：${filePath}。请先完成岗位澄清并创建 PIPELINE.json。`);
+    throw new Error(`流程配置文件解析失败：${filePath}。${error.message}`);
+  }
+  try {
+    return normalizePipeline(parsed);
+  } catch (error) {
+    throw new Error(`流程配置不合法：${filePath}。${error.message}`);
+  }
+}

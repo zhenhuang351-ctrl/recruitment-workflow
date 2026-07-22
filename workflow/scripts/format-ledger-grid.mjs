@@ -1,2 +1,0 @@
-import ExcelJS from "exceljs";
-export async function formatLedgerGrid(ledgerPath) { const workbook = new ExcelJS.Workbook(); await workbook.xlsx.readFile(ledgerPath); const sheet = workbook.getWorksheet("候选人台账"); sheet.eachRow((row) => row.eachCell({ includeEmpty: true }, (cell) => { cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true }; cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }; })); await workbook.xlsx.writeFile(ledgerPath); }

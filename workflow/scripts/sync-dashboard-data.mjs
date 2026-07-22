@@ -94,7 +94,10 @@ export async function syncDashboard({ ledgerPath, dashboardPath, role }) {
   const { values, stages } = await readLedger(ledgerPath);
   const html = await fs.readFile(dashboardPath, "utf8");
   const updated = injectAutoLedgerData(html, rowsFromLedgerValues(values, role), stages);
-  await fs.writeFile(dashboardPath, updated, "utf8");
+  const temporaryPath = `${dashboardPath}.tmp`;
+  await fs.writeFile(temporaryPath, updated, "utf8");
+  await fs.copyFile(dashboardPath, `${dashboardPath}.bak`);
+  await fs.rename(temporaryPath, dashboardPath);
   return { dashboardPath, records: rowsFromLedgerValues(values, role).length, stages };
 }
 

@@ -5,15 +5,21 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const formalDashboardTemplate = path.resolve(here, "../templates/recruitment-review-dashboard.html");
 
-export async function createReviewDashboard(outputPath) {
+export async function createReviewDashboard(outputPath, { templatePath = formalDashboardTemplate } = {}) {
   try {
     await fs.access(outputPath);
     throw new Error(`看板已存在：${outputPath}。为避免覆盖已同步的数据，请使用现有文件或另存为新文件。`);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
+  try {
+    await fs.access(templatePath);
+  } catch (error) {
+    if (error.code === "ENOENT") throw new Error(`正式招聘复盘看板模板不存在：${templatePath}`);
+    throw error;
+  }
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.copyFile(formalDashboardTemplate, outputPath);
+  await fs.copyFile(templatePath, outputPath);
   return outputPath;
 }
 

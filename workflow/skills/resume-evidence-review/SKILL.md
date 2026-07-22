@@ -5,7 +5,7 @@ description: Convert an authorized resume into a structured profile, evidence ca
 
 # 简历证据评估
 
-读取 `AGENTS.md`、当前岗位的 `CONTEXT.md`、`ROLE_STANDARD.md`、`candidate-ledger.xlsx` 和 `templates/简历评估提示词.md`。先用姓名、联系方式或简历唯一信息去重；只有获得使用授权的简历可以处理。
+读取 `AGENTS.md`、当前岗位的 `CONTEXT.md`、`ROLE_STANDARD.md`、`PIPELINE.json`、`candidate-ledger.xlsx` 和 `templates/简历评估提示词.md`。先用姓名、联系方式或简历唯一信息去重；只有获得使用授权的简历可以处理。
 
 第一行固定输出：`姓名｜建议｜能力证据得分｜证据覆盖率`。随后先写不超过三条整体判断，再给出结构化信息、逐维度证据卡、风险、**待核实**项和电话沟通问题。
 

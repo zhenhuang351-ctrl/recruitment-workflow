@@ -5,7 +5,7 @@ description: Record interview or decision feedback in separate layers, update a 
 
 # 反馈归档与校准
 
-读取当前岗位的 `CONTEXT.md`、`ROLE_STANDARD.md`、候选人档案、`candidate-ledger.xlsx`、`FEEDBACK_ITERATIONS.md` 和 `KEYWORD_ITERATIONS.md`。
+读取当前岗位的 `CONTEXT.md`、`ROLE_STANDARD.md`、`PIPELINE.json`、候选人档案、`candidate-ledger.xlsx`、`templates/面试反馈提示词.md`、`FEEDBACK_ITERATIONS.md` 和 `KEYWORD_ITERATIONS.md`。
 
 先把反馈分为五层：流程事实、能力反馈、岗位匹配判断、岗位级改进建议、待澄清问题。若适用范围不清晰，先问“这条反馈具体适用于哪个岗位或招聘环节？”，并停在待澄清；不得修改岗位标准、评分或搜寻策略。
 

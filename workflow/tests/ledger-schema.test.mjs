@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ledgerColumns, stageValues, statusValues, terminationReasons, buildLedger } from "../scripts/create-role-ledger.mjs";
+import { ledgerColumns, statusValues, terminationReasons, buildLedger } from "../scripts/create-role-ledger.mjs";
+
+const pipeline = { stages: [{ id: 0, name: "简历初筛" }, { id: 1, name: "电话沟通" }], statuses: statusValues };
 
 test("ledger distinguishes age and all three experience definitions", () => {
   assert.deepEqual(ledgerColumns.slice(0, 7), [
     "候选人ID", "姓名", "年龄", "学历", "总工作年限", "对口岗位年限", "对口项目年限",
   ]);
   assert.ok(ledgerColumns.includes("年龄/年限资格提示"));
-  assert.ok(stageValues.includes("1-电话沟通"));
-  assert.equal(stageValues.includes("暂缓"), false);
-  assert.equal(stageValues.includes("终止"), false);
   assert.ok(statusValues.includes("已约面"));
   assert.ok(statusValues.includes("暂缓"));
   assert.ok(statusValues.includes("终止"));
@@ -17,7 +16,7 @@ test("ledger distinguishes age and all three experience definitions", () => {
 });
 
 test("ledger builder creates four role-specific sheets and avoids automatic rejection", async () => {
-  const workbook = await buildLedger("目标岗位");
+  const workbook = await buildLedger("目标岗位", pipeline);
   const names = workbook.worksheets.map((sheet) => sheet.name).join(" ");
   assert.match(names, /候选人台账/);
   assert.match(names, /状态字典/);

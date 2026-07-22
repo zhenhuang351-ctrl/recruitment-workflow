@@ -7,9 +7,10 @@ const templates = [
   "简历评估提示词.md",
   "电话沟通提示词.md",
   "面试反馈提示词.md",
+  "Offer与入职提示词.md",
 ];
 
-test("all four interactive prompt templates exist", async () => {
+test("all interactive prompt templates exist", async () => {
   for (const file of templates) {
     const text = await readFile(`workflow/templates/${file}`, "utf8");
     assert.ok(text.length > 200, `${file} should be a usable template`);
@@ -53,7 +54,14 @@ test("role memory templates preserve confirmed rules, unresolved questions and n
 
 test("keyword iteration template records evidence instead of self-adjusting search", async () => {
   const text = await readFile("workflow/templates/KEYWORD_ITERATIONS.md", "utf8");
-  for (const term of ["命中证据", "人工确认", "不得自动", "岗位标准版本"]) {
+  for (const term of ["命中证据", "人工确认", "不得自动", "岗位标准版本", "5 条同类"]) {
+    assert.match(text, new RegExp(term));
+  }
+});
+
+test("offer and onboarding template preserves confirmed pipeline stages", async () => {
+  const text = await readFile("workflow/templates/Offer与入职提示词.md", "utf8");
+  for (const term of ["Offer发出日期", "Offer接受日期", "预计入职日期", "实际入职日期", "PIPELINE.json", "人工确认"]) {
     assert.match(text, new RegExp(term));
   }
 });
