@@ -1,4 +1,4 @@
-# Recruitment Evidence Workflow
+# Recruitment Workflow
 
 一个可放在本地文件夹、可在 Codex、ChatGPT、Claude 或 Cursor 中重复使用的招聘证据工作流。它将岗位澄清、寻源策略、简历证据、电话沟通、面试反馈和招聘复盘连成同一条可追溯链路。
 
