@@ -9,9 +9,7 @@ test("ledger distinguishes age and all three experience definitions", () => {
     "候选人ID", "姓名", "年龄", "学历", "总工作年限", "对口岗位年限", "对口项目年限",
   ]);
   assert.ok(ledgerColumns.includes("年龄/年限资格提示"));
-  assert.ok(statusValues.includes("已约面"));
-  assert.ok(statusValues.includes("暂缓"));
-  assert.ok(statusValues.includes("终止"));
+  assert.deepEqual(statusValues, ["进行中", "通过", "终止"]);
   assert.ok(terminationReasons.includes("Base 不符"));
 });
 

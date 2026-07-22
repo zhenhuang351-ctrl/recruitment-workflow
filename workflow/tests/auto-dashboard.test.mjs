@@ -14,14 +14,14 @@ const execFileAsync = promisify(execFile);
 test("ledger rows are converted to the formal dashboard's stable headers", () => {
   const [row] = rowsFromLedgerValues([
     ["姓名", "主阶段", "阶段状态", "终止原因", "备注", "简历收取时间", "简历来源", "当前公司"],
-    ["候选人A", "2-业务一面", "已约面", "", "等待面试", "2026-07-22", "员工推荐", "公司A"],
+    ["候选人A", "2-业务一面", "进行中", "", "已约面，等待面试", "2026-07-22", "员工推荐", "公司A"],
   ], "AI 产品经理");
 
   assert.deepEqual(row, {
     "主阶段": "2-业务一面",
-    "阶段状态": "已约面",
+    "阶段状态": "进行中",
     "终止原因": "",
-    "备注信息": "等待面试",
+    "备注信息": "已约面，等待面试",
     "简历收取时间": "2026-07-22",
     "岗位名称": "AI 产品经理",
     "候选人姓名": "候选人A",
@@ -63,12 +63,12 @@ test("a role can create the formal template and synchronise a configured ledger 
   const dashboardPath = path.join(directory, "index.html");
   const workbook = await buildLedger("测试岗位", {
     stages: [{ id: 0, name: "简历初筛" }, { id: 1, name: "业务沟通" }],
-    statuses: ["待处理", "终止", "暂缓"],
+    statuses: ["进行中", "通过", "终止"],
   });
   const ledger = workbook.getWorksheet("候选人台账");
   ledger.getCell("B4").value = "候选人A";
   ledger.getCell("T4").value = "1-业务沟通";
-  ledger.getCell("U4").value = "待处理";
+  ledger.getCell("U4").value = "进行中";
   ledger.getCell("M4").value = "员工推荐";
   await workbook.xlsx.writeFile(ledgerPath);
   await createReviewDashboard(dashboardPath);

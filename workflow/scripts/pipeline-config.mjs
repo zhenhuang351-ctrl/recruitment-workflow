@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 
-export const defaultStatuses = ["待处理", "待招聘者确认", "待候选人回复", "已约面", "进行中", "已完成", "暂缓", "终止"];
+export const defaultStatuses = ["进行中", "通过", "终止"];
 
 export function normalizePipeline(input) {
   if (!Array.isArray(input?.stages) || input.stages.length === 0) throw new Error("流程配置至少需要一个主阶段。");
@@ -9,7 +9,7 @@ export function normalizePipeline(input) {
   if (new Set(stages.map((stage) => stage.id)).size !== stages.length) throw new Error("流程阶段 id 不能重复。");
   if (stages.some((stage, index) => stage.id !== index)) throw new Error("流程阶段 id 必须从 0 开始连续编号，确保 Excel 与复盘漏斗顺序一致。");
   const statuses = [...new Set((input.statuses ?? defaultStatuses).map((value) => String(value).trim()).filter(Boolean))];
-  if (!statuses.includes("暂缓") || !statuses.includes("终止")) throw new Error("阶段状态必须包含暂缓和终止。");
+  if (statuses.join("|") !== defaultStatuses.join("|")) throw new Error("阶段状态必须且只能为：进行中、通过、终止。");
   return { stages, statuses };
 }
 export const stageLabels = (pipeline) => pipeline.stages.map(({ id, name }) => `${id}-${name}`);

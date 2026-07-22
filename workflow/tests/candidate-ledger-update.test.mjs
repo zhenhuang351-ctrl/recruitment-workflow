@@ -44,7 +44,7 @@ test("deferral is a stage status and keeps where the candidate was paused", () =
     stage: "3-业务二面",
   });
   assert.equal(patch.主阶段, "3-业务二面");
-  assert.equal(patch.阶段状态, "暂缓");
+  assert.equal(patch.阶段状态, "进行中");
 });
 
 test("interview-ready decision moves a candidate to the first-interview stage without scheduling", () => {
@@ -55,7 +55,7 @@ test("interview-ready decision moves a candidate to the first-interview stage wi
     stage: "2-业务一面",
   });
   assert.equal(patch.主阶段, "2-业务一面");
-  assert.equal(patch.阶段状态, "待候选人回复");
+  assert.equal(patch.阶段状态, "进行中");
   assert.equal(patch.终止原因, "");
 });
 
@@ -65,8 +65,8 @@ test("confirmed interview details override the default pending-reply status", ()
     name: "A",
     decision: "ready_for_interview",
     stage: "2-业务一面",
-    fields: { 阶段状态: "已约面", 一面日期: "2026-07-21" },
+    fields: { 阶段状态: "进行中", 一面日期: "2026-07-21" },
   });
-  assert.equal(patch.阶段状态, "已约面");
+  assert.equal(patch.阶段状态, "进行中");
   assert.ok(patch.一面日期 instanceof Date);
 });

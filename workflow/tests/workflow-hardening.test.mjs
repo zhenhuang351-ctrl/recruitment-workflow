@@ -9,7 +9,7 @@ import { readPipeline } from "../scripts/pipeline-config.mjs";
 import { syncDashboard } from "../scripts/sync-dashboard-data.mjs";
 import { upsertCandidates } from "../scripts/update-candidate-ledger.mjs";
 
-const pipeline = { stages: [{ id: 0, name: "简历初筛" }, { id: 1, name: "电话沟通" }], statuses: ["待处理", "终止", "暂缓"] };
+const pipeline = { stages: [{ id: 0, name: "简历初筛" }, { id: 1, name: "电话沟通" }], statuses: ["进行中", "通过", "终止"] };
 
 test("ledger creation requires a confirmed pipeline instead of falling back to fixed stages", async () => {
   await assert.rejects(buildLedger("测试岗位"), /PIPELINE\.json|流程配置/);
@@ -54,11 +54,11 @@ test("dashboard sync preserves the previous dashboard as a backup", async () => 
   await fs.rm(directory, { recursive: true, force: true });
 });
 
-test("ledger reserves a configurable capacity and records offer and onboarding dates", async () => {
-  assert.ok(ledgerColumns.includes("Offer发出日期"));
-  assert.ok(ledgerColumns.includes("Offer接受日期"));
-  assert.ok(ledgerColumns.includes("预计入职日期"));
-  assert.ok(ledgerColumns.includes("实际入职日期"));
+test("ledger reserves a configurable capacity without special offer or onboarding date fields", async () => {
+  assert.equal(ledgerColumns.includes("Offer发出日期"), false);
+  assert.equal(ledgerColumns.includes("Offer接受日期"), false);
+  assert.equal(ledgerColumns.includes("预计入职日期"), false);
+  assert.equal(ledgerColumns.includes("实际入职日期"), false);
   const workbook = await buildLedger("测试岗位", pipeline, { capacity: 401 });
   assert.equal(workbook.getWorksheet("候选人台账").rowCount, 404);
 });

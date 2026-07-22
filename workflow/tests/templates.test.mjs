@@ -61,7 +61,7 @@ test("keyword iteration template records evidence instead of self-adjusting sear
 
 test("offer and onboarding template preserves confirmed pipeline stages", async () => {
   const text = await readFile("workflow/templates/Offer与入职提示词.md", "utf8");
-  for (const term of ["Offer发出日期", "Offer接受日期", "预计入职日期", "实际入职日期", "PIPELINE.json", "人工确认"]) {
+  for (const term of ["进行中", "通过", "终止", "终止原因", "备注", "PIPELINE.json", "人工确认"]) {
     assert.match(text, new RegExp(term));
   }
 });
