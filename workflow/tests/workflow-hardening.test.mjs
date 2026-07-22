@@ -55,6 +55,7 @@ test("dashboard sync preserves the previous dashboard as a backup", async () => 
 });
 
 test("ledger reserves a configurable capacity without special offer or onboarding date fields", async () => {
+  assert.equal(ledgerColumns.includes("Offer情况"), false);
   assert.equal(ledgerColumns.includes("Offer发出日期"), false);
   assert.equal(ledgerColumns.includes("Offer接受日期"), false);
   assert.equal(ledgerColumns.includes("预计入职日期"), false);

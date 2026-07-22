@@ -21,6 +21,8 @@ test("new role and feedback routes name every required durable file", async () =
   assert.match(router, /PIPELINE\.json/);
   assert.match(feedback, /面试反馈提示词\.md/);
   assert.match(feedback, /PIPELINE\.json/);
+  assert.match(agents, /主阶段、阶段状态、终止原因、备注和下一步动作/);
+  assert.doesNotMatch(agents, /更新 Offer、入职字段/);
 });
 
 test("global rules make the five feedback layers authoritative", async () => {
