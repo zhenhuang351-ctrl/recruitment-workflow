@@ -7,7 +7,7 @@ description: Record interview or decision feedback in separate layers, update a 
 
 读取当前岗位的 `CONTEXT.md`、`ROLE_STANDARD.md`、候选人档案、`candidate-ledger.xlsx`、`FEEDBACK_ITERATIONS.md` 和 `KEYWORD_ITERATIONS.md`。
 
-先把反馈分为五层：流程事实、能力判断、当前岗位匹配、转推荐条件、待澄清问题。若适用范围不清晰，先问“这条判断适用于当前岗位还是转推荐岗位？”，并停在待澄清；不得修改岗位标准、评分或搜寻策略。
+先把反馈分为五层：流程事实、能力反馈、岗位匹配判断、岗位级改进建议、待澄清问题。若适用范围不清晰，先问“这条反馈具体适用于哪个岗位或招聘环节？”，并停在待澄清；不得修改岗位标准、评分或搜寻策略。
 
 候选人流程更新应保留最后实际到达的主阶段；终止写入阶段状态与终止原因，不写成主阶段。输出更新草稿，等待人工确认后才写回台账和候选人档案。
 

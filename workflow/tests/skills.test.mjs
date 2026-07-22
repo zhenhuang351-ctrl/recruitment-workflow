@@ -18,8 +18,8 @@ test("portable recruitment skills have concise metadata and human confirmation b
   }
 });
 
-test("router skill retains ambiguity gate for current and transfer roles", async () => {
+test("router skill retains ambiguity gate for feedback scope", async () => {
   const text = await readFile("workflow/skills/recruit-router/SKILL.md", "utf8");
-  assert.match(text, /当前岗位还是转推荐岗位/);
+  assert.match(text, /具体适用于哪个岗位或招聘环节/);
   assert.match(text, /不得修改岗位标准、评分或搜寻策略/);
 });

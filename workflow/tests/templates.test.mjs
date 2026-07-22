@@ -51,16 +51,16 @@ test("keyword iteration template records evidence instead of self-adjusting sear
   }
 });
 
-test("interview feedback separates current-role fit from transfer-role conditions", async () => {
+test("interview feedback separates facts, ability and role-level improvements", async () => {
   const text = await readFile("workflow/templates/面试反馈提示词.md", "utf8");
-  for (const term of ["流程事实", "能力判断", "当前岗位匹配", "转推荐条件", "待澄清问题"]) {
+  for (const term of ["流程事实", "能力反馈", "岗位匹配判断", "岗位级改进建议", "待澄清问题"]) {
     assert.match(text, new RegExp(term));
   }
 });
 
 test("ambiguous feedback blocks strategy changes until clarified", async () => {
   const text = await readFile("workflow/AGENTS.md", "utf8");
-  for (const term of ["未澄清前", "不得修改岗位标准、评分或搜寻策略", "当前岗位还是转推荐岗位"]) {
+  for (const term of ["未澄清前", "不得修改岗位标准、评分或搜寻策略", "具体适用于哪个岗位或招聘环节"]) {
     assert.match(text, new RegExp(term));
   }
 });
