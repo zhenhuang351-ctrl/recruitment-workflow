@@ -42,6 +42,14 @@ workflow/
 - [设计说明](docs/DESIGN.md)：项目解决的问题、数据边界、人工确认机制与反馈校准原则。
 - [流程配置说明](docs/PIPELINE-CONFIG-DESIGN.md)：不同岗位如何确认阶段名称与顺序，并让 Excel 台账和招聘复盘看板使用同一套流程。
 
+## 核心文件导航
+
+- [AI 工作入口：AGENTS.md](workflow/AGENTS.md)：开始任何岗位或候选人任务前，让 AI 先读取这里。
+- [全局招聘规则：00-招聘规则.md](workflow/00-招聘规则.md)：年龄、工作年限、隐私、流程状态与人工确认边界。
+- [工作流包说明：workflow/README.md](workflow/README.md)：复制 `workflow/` 后，各 Markdown 文件与目录分别承担什么职责。
+- [设计说明：DESIGN.md](docs/DESIGN.md)：为什么这样划分 AI 与招聘者的职责、数据如何保存、反馈如何校准。
+- [流程配置说明：PIPELINE-CONFIG-DESIGN.md](docs/PIPELINE-CONFIG-DESIGN.md)：如何确认每个岗位的阶段名称与顺序，并同步到台账和正式看板。
+
 ## 四个可复用 Skill
 
 - `recruit-router`：识别当前请求属于哪个环节，并先读对的事实源。
@@ -92,4 +100,3 @@ node workflow/scripts/sync-dashboard-data.mjs `
 npm.cmd install
 npm.cmd test
 ```
-
