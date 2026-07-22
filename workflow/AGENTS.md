@@ -5,7 +5,8 @@
 1. `00-招聘规则.md`
 2. 对应岗位目录中的 `CONTEXT.md`（若已存在）
 3. 对应岗位目录中的 `ROLE_STANDARD.md`
-4. 对应岗位目录中的 `candidate-ledger.xlsx`
+4. 对应岗位目录中的 `PIPELINE.json`
+5. 对应岗位目录中的 `candidate-ledger.xlsx`
 
 Excel 是候选人流程数据的唯一事实来源；候选人 Markdown 档案用于保存可追溯证据；`index.html` 是可由台账重新生成的脱敏复盘展示层。
 

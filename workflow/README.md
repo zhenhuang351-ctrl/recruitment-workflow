@@ -6,6 +6,7 @@
 
 1. 把整个 `workflow` 文件夹放在一个本地项目中，并让 AI 先阅读 `AGENTS.md`。
 2. 新建岗位时，把 `templates/岗位澄清提示词.md` 和岗位名称/JD/业务背景发给 AI。AI 一次问一个问题，确认后生成该岗位的 `ROLE_STANDARD.md` 与 `SOURCING_STRATEGY.md`。
+   在候选人处理前，还必须确认流程阶段名称与顺序，并生成 `PIPELINE.json`。
 3. 为岗位运行台账生成器。每个岗位独立保留一份 `candidate-ledger.xlsx`。
 4. 上传或粘贴已授权的简历，并使用 `templates/简历评估提示词.md`。先让 AI 输出结构化简历和证据卡；确认后再创建候选人档案和台账行。
 5. 电话后粘贴已授权的沟通摘要，使用 `templates/电话沟通提示词.md`；面试后粘贴反馈，使用 `templates/面试反馈提示词.md`。
@@ -31,7 +32,7 @@ workflow/
 ## 生成一岗一表
 
 ```powershell
-node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --out "岗位/岗位名称/candidate-ledger.xlsx"
+node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --pipeline "岗位/岗位名称/PIPELINE.json" --out "岗位/岗位名称/candidate-ledger.xlsx"
 ```
 
 复盘页使用团队已有的 `index.html` 作为唯一 HTML 看板；不再使用简易生成页覆盖它。

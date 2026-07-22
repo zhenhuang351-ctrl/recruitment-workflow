@@ -18,13 +18,13 @@ test("dashboard exposes aggregate pipeline data without candidate-level details"
 });
 
 test("dashboard summary reads stages sources and termination reasons from the role ledger", async () => {
-  const workbook = await buildLedger("示例岗位");
-  const ledger = workbook.worksheets.getItem("候选人台账");
-  ledger.getRange("M4").values = [["员工推荐"]];
-  ledger.getRange("T4").values = [["1-电话沟通"]];
-  ledger.getRange("AO5").values = [["Base 不符"]];
+  const workbook = await buildLedger("目标岗位");
+  const ledger = workbook.getWorksheet("候选人台账");
+  ledger.getCell("M4").value = "员工推荐";
+  ledger.getCell("T4").value = "1-电话沟通";
+  ledger.getCell("AO5").value = "Base 不符";
 
-  const data = await summarizeLedgerWorkbook(workbook, "示例岗位");
+  const data = await summarizeLedgerWorkbook(workbook, "目标岗位");
   assert.deepEqual(data.stages.find((item) => item.label === "1-电话沟通"), { label: "1-电话沟通", count: 1 });
   assert.deepEqual(data.stages.find((item) => item.label === "0-简历待评估"), { label: "0-简历待评估", count: 0 });
   assert.deepEqual(data.sources.find((item) => item.label === "员工推荐"), { label: "员工推荐", count: 1 });

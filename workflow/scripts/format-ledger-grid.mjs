@@ -1,20 +1,2 @@
-import { FileBlob, SpreadsheetFile } from "@oai/artifact-tool";
-
-const ledgerPath = process.argv[2];
-if (!ledgerPath) throw new Error("用法：node workflow/scripts/format-ledger-grid.mjs <candidate-ledger.xlsx>");
-
-const input = await FileBlob.load(ledgerPath);
-const workbook = await SpreadsheetFile.importXlsx(input);
-const sheet = workbook.worksheets.getItem("候选人台账");
-
-const dataRange = sheet.getRange("A3:AS303");
-dataRange.format.borders = { preset: "all", style: "thin", color: "#D6DEE6" };
-dataRange.format.horizontalAlignment = "center";
-dataRange.format.verticalAlignment = "center";
-sheet.getRange("A3:AS3").format.borders = { preset: "all", style: "thin", color: "#9DB0C0" };
-sheet.getRange("L4:L303").format.numberFormat = "yyyy-mm-dd";
-sheet.getRange("L3").values = [["简历收取时间"]];
-
-const output = await SpreadsheetFile.exportXlsx(workbook);
-await output.save(ledgerPath);
-console.log(`已统一网格线并规范简历收取时间：${ledgerPath}`);
+import ExcelJS from "exceljs";
+export async function formatLedgerGrid(ledgerPath) { const workbook = new ExcelJS.Workbook(); await workbook.xlsx.readFile(ledgerPath); const sheet = workbook.getWorksheet("候选人台账"); sheet.eachRow((row) => row.eachCell({ includeEmpty: true }, (cell) => { cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true }; cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }; })); await workbook.xlsx.writeFile(ledgerPath); }

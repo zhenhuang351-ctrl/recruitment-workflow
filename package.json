@@ -5,5 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test workflow/tests/*.test.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
   }
 }

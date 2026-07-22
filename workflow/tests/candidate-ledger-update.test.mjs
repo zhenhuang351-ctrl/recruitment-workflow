@@ -44,6 +44,7 @@ test("interview-ready decision moves a candidate to the first-interview stage wi
     candidateId: "AI-PAY-002",
     name: "A",
     decision: "ready_for_interview",
+    stage: "2-业务一面",
   });
   assert.equal(patch.主阶段, "2-业务一面");
   assert.equal(patch.阶段状态, "待候选人回复");
