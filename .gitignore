@@ -1,0 +1,9 @@
+node_modules/
+.pnpm-store/
+.next/
+.env.local
+workflow/roles/
+岗位/
+workflow/verification/
+workflow/tmp/
+*.inspect.ndjson
