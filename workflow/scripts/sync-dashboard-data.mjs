@@ -1,7 +1,120 @@
 import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import ExcelJS from "exceljs";
-const DATA_START = "/* AUTO_LEDGER_DATA:START */", DATA_END = "/* AUTO_LEDGER_DATA:END */";
-export function rowsFromLedgerValues(values, role) { const [headers = [], ...rows] = values; return rows.filter((row) => row.some((v) => String(v ?? "").trim())).map((row) => Object.fromEntries(headers.map((key, i) => [key, row[i] ?? ""]).concat([["岗位", role], ["__sheetName", role], ["jobNameFromSheet", role]]))); }
-export function prepareReviewRows(rows) { return rows.map((row) => row["主阶段"] === "终止" ? { ...row, "主阶段": row["决策会日期"] ? "6-决策会" : "0-简历待评估", "阶段状态": "终止" } : row); }
-export function injectAutoLedgerData(html, rows, stageOrder = []) { const block = `${DATA_START}\nconst AUTO_DASHBOARD_DATA = ${JSON.stringify(rows).replaceAll("<", "\\u003c")};\nconst AUTO_DASHBOARD_STAGE_ORDER = ${JSON.stringify(stageOrder)};\nfunction loadAutoLedgerData() { return { rows: AUTO_DASHBOARD_DATA, stageOrder: AUTO_DASHBOARD_STAGE_ORDER }; }\n${DATA_END}`; const start = html.indexOf(DATA_START), end = html.indexOf(DATA_END); if (start >= 0 && end >= start) return `${html.slice(0, start)}${block}${html.slice(end + DATA_END.length)}`; return html.includes("</body>") ? html.replace("</body>", `<script>${block}</script></body>`) : `${html}\n${block}`; }
-export async function syncDashboard({ ledgerPath, dashboardPath, role }) { const workbook = new ExcelJS.Workbook(); await workbook.xlsx.readFile(ledgerPath); const ledger = workbook.getWorksheet("候选人台账"), config = workbook.getWorksheet("选项配置"); const values = []; for (let i = 3; i <= 303; i += 1) values.push(ledger.getRow(i).values.slice(1)); const stages = []; for (let i = 2; config.getCell(i, 2).value; i += 1) stages.push(String(config.getCell(i, 2).value)); const html = await fs.readFile(dashboardPath, "utf8"); await fs.writeFile(dashboardPath, injectAutoLedgerData(html, prepareReviewRows(rowsFromLedgerValues(values, role)), stages), "utf8"); }
+
+const DATA_START = "/* AUTO_LEDGER_DATA:START */";
+const DATA_END = "/* AUTO_LEDGER_DATA:END */";
+
+const valueOf = (row, key) => row[key] ?? "";
+
+/** Convert a role ledger row into the fixed header names understood by the formal review dashboard. */
+export function normalizeReviewRow(row, role) {
+  return {
+    "主阶段": valueOf(row, "主阶段"),
+    "阶段状态": valueOf(row, "阶段状态"),
+    "终止原因": valueOf(row, "终止原因"),
+    "备注信息": valueOf(row, "备注"),
+    "简历收取时间": valueOf(row, "简历收取时间"),
+    "岗位名称": role,
+    "候选人姓名": valueOf(row, "姓名"),
+    "简历来源": valueOf(row, "简历来源"),
+    "当前公司": valueOf(row, "当前公司"),
+  };
+}
+
+export function rowsFromLedgerValues(values, role) {
+  const [headers = [], ...rows] = values;
+  return rows
+    .filter((row) => row.some((value) => String(value ?? "").trim()))
+    .map((row) => Object.fromEntries(headers.map((key, index) => [key, row[index] ?? ""])))
+    .map((row) => normalizeReviewRow(row, role));
+}
+
+function reviewRuntimeBlock(rows, stageOrder) {
+  const safeRows = JSON.stringify(rows).replaceAll("<", "\\u003c");
+  const safeStages = JSON.stringify(stageOrder).replaceAll("<", "\\u003c");
+  return `${DATA_START}
+const AUTO_DASHBOARD_DATA = ${safeRows};
+const AUTO_DASHBOARD_STAGE_ORDER = ${safeStages};
+
+function loadAutoLedgerData() {
+  return { rows: AUTO_DASHBOARD_DATA, stageOrder: AUTO_DASHBOARD_STAGE_ORDER };
+}
+
+function applyAutoLedgerData() {
+  if (!Array.isArray(AUTO_DASHBOARD_DATA) || AUTO_DASHBOARD_DATA.length === 0) return;
+  STAGES_CONFIG = AUTO_DASHBOARD_STAGE_ORDER.map((stage, code) => {
+    const match = String(stage).match(/^(\\d+)-(.*)$/);
+    return {
+      code: match ? Number(match[1]) : code,
+      key: DEFAULT_STAGES_CONFIG[code]?.key || 'custom_' + code,
+      label: (match ? match[2] : String(stage)).trim(),
+      color: getStageColor(code)
+    };
+  });
+  rawData = transformData(AUTO_DASHBOARD_DATA);
+  if (rawData.length === 0) return;
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('mainContent').classList.add('active');
+  initTimeSelectors();
+  refreshData();
+  showPageMessage('已从候选人台账加载 ' + rawData.length + ' 条招聘记录。', 'success');
+}
+
+applyAutoLedgerData();
+${DATA_END}`;
+}
+
+/** Insert or replace the role-local data block without changing the formal dashboard UI. */
+export function injectAutoLedgerData(html, rows, stageOrder = []) {
+  const block = reviewRuntimeBlock(rows, stageOrder);
+  const start = html.indexOf(DATA_START);
+  const end = html.indexOf(DATA_END);
+  if (start >= 0 && end >= start) return `${html.slice(0, start)}${block}${html.slice(end + DATA_END.length)}`;
+  if (!html.includes("</body>")) throw new Error("正式复盘看板缺少 </body>，无法写入台账数据。");
+  return html.replace("</body>", `<script>\n${block}\n</script>\n</body>`);
+}
+
+async function readLedger(ledgerPath) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(ledgerPath);
+  const ledger = workbook.getWorksheet("候选人台账");
+  const config = workbook.getWorksheet("选项配置");
+  if (!ledger || !config) throw new Error("未找到“候选人台账”或“选项配置”工作表。");
+  const values = [];
+  for (let index = 3; index <= ledger.rowCount; index += 1) values.push(ledger.getRow(index).values.slice(1));
+  const stages = [];
+  for (let index = 2; config.getCell(index, 2).value; index += 1) stages.push(String(config.getCell(index, 2).value));
+  if (!stages.length) throw new Error("选项配置中没有主阶段，无法生成正确顺序的漏斗。");
+  return { values, stages };
+}
+
+export async function syncDashboard({ ledgerPath, dashboardPath, role }) {
+  const { values, stages } = await readLedger(ledgerPath);
+  const html = await fs.readFile(dashboardPath, "utf8");
+  const updated = injectAutoLedgerData(html, rowsFromLedgerValues(values, role), stages);
+  await fs.writeFile(dashboardPath, updated, "utf8");
+  return { dashboardPath, records: rowsFromLedgerValues(values, role).length, stages };
+}
+
+function argument(name) {
+  const index = process.argv.indexOf(name);
+  return index < 0 ? undefined : process.argv[index + 1];
+}
+
+export async function runCli() {
+  const ledgerPath = argument("--ledger");
+  const dashboardPath = argument("--dashboard");
+  const role = argument("--role");
+  if (!ledgerPath || !dashboardPath || !role) {
+    throw new Error("用法：node workflow/scripts/sync-dashboard-data.mjs --ledger <candidate-ledger.xlsx> --dashboard <index.html> --role <岗位名称>");
+  }
+  const result = await syncDashboard({ ledgerPath, dashboardPath, role });
+  console.log(`已同步 ${result.records} 条记录到正式复盘看板：${result.dashboardPath}`);
+}
+
+const currentFile = fileURLToPath(import.meta.url);
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === pathToFileURL(currentFile).href) {
+  await runCli();
+}

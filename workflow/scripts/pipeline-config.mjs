@@ -7,6 +7,7 @@ export function normalizePipeline(input) {
   const stages = input.stages.map(({ id, name }) => ({ id: Number(id), name: String(name ?? "").trim() })).sort((a, b) => a.id - b.id);
   if (stages.some((stage) => !Number.isInteger(stage.id) || !stage.name)) throw new Error("每个阶段必须有整数 id 和非空名称。");
   if (new Set(stages.map((stage) => stage.id)).size !== stages.length) throw new Error("流程阶段 id 不能重复。");
+  if (stages.some((stage, index) => stage.id !== index)) throw new Error("流程阶段 id 必须从 0 开始连续编号，确保 Excel 与复盘漏斗顺序一致。");
   const statuses = [...new Set((input.statuses ?? defaultStatuses).map((value) => String(value).trim()).filter(Boolean))];
   if (!statuses.includes("暂缓") || !statuses.includes("终止")) throw new Error("阶段状态必须包含暂缓和终止。");
   return { stages, statuses };

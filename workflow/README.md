@@ -35,11 +35,17 @@ workflow/
 node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --pipeline "岗位/岗位名称/PIPELINE.json" --out "岗位/岗位名称/candidate-ledger.xlsx"
 ```
 
-复盘页使用团队已有的 `index.html` 作为唯一 HTML 看板；不再使用简易生成页覆盖它。
+复盘页使用仓库内的正式招聘复盘看板模板；不再提供简易生成页。每个岗位先从模板创建自己的 `index.html`，再将候选人台账同步进去。
 
 ## 让看板自动带入台账
 
-首次将 `index.html` 放入岗位目录后，可运行下面命令，把该岗位台账的数据同步进看板。之后直接打开 `index.html` 就会显示最新记录，原有的上传按钮仍可用于临时查看其他表格。
+先为岗位创建正式看板：
+
+```powershell
+node workflow/scripts/create-review-dashboard.mjs --out "岗位/岗位名称/index.html"
+```
+
+然后运行下面命令，把该岗位台账的数据同步进看板。同步会读取 Excel 的“选项配置”中的主阶段顺序，并写入看板的漏斗配置；之后直接打开 `index.html` 即可查看正式看板。原有的上传按钮仍可用于临时查看其他表格。
 
 ```powershell
 node workflow/scripts/sync-dashboard-data.mjs `
