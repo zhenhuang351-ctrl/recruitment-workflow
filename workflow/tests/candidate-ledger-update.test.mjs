@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { decisionToLedgerPatch, mergeCandidate } from "../scripts/update-candidate-ledger.mjs";
 
-test("termination decision preserves the reason and does not use an automatic-rejection status", () => {
+test("termination is a stage status and preserves the reached main stage and reason", () => {
   const patch = decisionToLedgerPatch({
     candidateId: "AI-PAY-001",
     name: "A",
@@ -10,12 +10,12 @@ test("termination decision preserves the reason and does not use an automatic-re
     reason: "简历不匹配",
   });
   assert.equal(patch.主阶段, "0-简历待评估");
-  assert.equal(patch.阶段状态, "已终止");
+  assert.equal(patch.阶段状态, "终止");
   assert.equal(patch.终止原因, "简历不匹配");
   assert.match(patch.备注, /招聘者确认/);
 });
 
-test("a termination remains attached to the candidate's last reached main stage", () => {
+test("termination keeps the last reached main stage", () => {
   const patch = decisionToLedgerPatch({
     candidateId: "AI-PAY-002",
     name: "A",
@@ -25,7 +25,18 @@ test("a termination remains attached to the candidate's last reached main stage"
   });
 
   assert.equal(patch.主阶段, "6-决策会");
-  assert.equal(patch.阶段状态, "已终止");
+  assert.equal(patch.阶段状态, "终止");
+});
+
+test("deferral is a stage status and keeps where the candidate was paused", () => {
+  const patch = decisionToLedgerPatch({
+    candidateId: "C-003",
+    name: "A",
+    decision: "defer",
+    stage: "3-业务二面",
+  });
+  assert.equal(patch.主阶段, "3-业务二面");
+  assert.equal(patch.阶段状态, "暂缓");
 });
 
 test("interview-ready decision moves a candidate to the first-interview stage without scheduling", () => {

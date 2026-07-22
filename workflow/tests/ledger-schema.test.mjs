@@ -8,8 +8,11 @@ test("ledger distinguishes age and all three experience definitions", () => {
   ]);
   assert.ok(ledgerColumns.includes("年龄/年限资格提示"));
   assert.ok(stageValues.includes("1-电话沟通"));
+  assert.equal(stageValues.includes("暂缓"), false);
   assert.equal(stageValues.includes("终止"), false);
   assert.ok(statusValues.includes("已约面"));
+  assert.ok(statusValues.includes("暂缓"));
+  assert.ok(statusValues.includes("终止"));
   assert.ok(terminationReasons.includes("Base 不符"));
 });
 

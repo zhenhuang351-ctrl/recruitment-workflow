@@ -53,20 +53,20 @@ test("prepareReviewRows counts a terminated candidate with a decision date at th
   const [row] = prepareReviewRows([{
     "姓名": "A",
     "主阶段": "终止",
-    "阶段状态": "已终止",
+    "阶段状态": "终止",
     "决策会日期": 46227,
     "终止原因": "其他待说明",
   }]);
 
   assert.equal(row["主阶段"], "6-决策会");
-  assert.equal(row["阶段状态"], "已终止");
+  assert.equal(row["阶段状态"], "终止");
 });
 
 test("prepareReviewRows counts a resume mismatch termination at resume review", () => {
   const [row] = prepareReviewRows([{
     "姓名": "B",
     "主阶段": "终止",
-    "阶段状态": "已终止",
+    "阶段状态": "终止",
     "终止原因": "简历不匹配",
   }]);
 

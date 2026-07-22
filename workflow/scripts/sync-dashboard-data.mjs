@@ -50,9 +50,9 @@ export function prepareReviewRows(rows) {
   return rows.map((row) => {
     if (String(row["主阶段"] || "").trim() !== "终止") return { ...row };
     const datedStage = reviewStageDates.find(([dateColumn]) => hasValue(row[dateColumn]));
-    if (datedStage) return { ...row, "主阶段": datedStage[1] };
+    if (datedStage) return { ...row, "主阶段": datedStage[1], "阶段状态": "终止" };
     if (String(row["终止原因"] || "").includes("简历不匹配")) {
-      return { ...row, "主阶段": "0-简历待评估" };
+      return { ...row, "主阶段": "0-简历待评估", "阶段状态": "终止" };
     }
     return { ...row };
   });

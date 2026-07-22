@@ -16,10 +16,20 @@ export function decisionToLedgerPatch({ candidateId, name, decision, stage = "0-
     return {
       ...base,
       主阶段: stage,
-      阶段状态: "已终止",
+      阶段状态: "终止",
       终止原因: reason || "其他待说明",
       下一步动作: "",
       备注: `招聘者确认终止：${note || reason || "待补充"}`,
+    };
+  }
+  if (decision === "defer") {
+    return {
+      ...base,
+      主阶段: stage,
+      阶段状态: "暂缓",
+      终止原因: "",
+      下一步动作: "等待招聘者确认恢复跟进时间",
+      备注: `招聘者确认暂缓：${note || "待补充"}`,
     };
   }
   if (decision === "ready_for_interview") {
@@ -57,7 +67,7 @@ export async function upsertCandidates({ ledgerPath, candidates }) {
   config.getRangeByIndexes(1, 1, stageValues.length, 1).values = stageValues.map((value) => [value]);
   config.getRangeByIndexes(1, 2, statusValues.length, 1).values = statusValues.map((value) => [value]);
   sheet.getRange("T4:T303").dataValidation = { rule: { type: "list", formula1: `='选项配置'!$B$2:$B$${stageValues.length + 1}` } };
-  sheet.getRange("U4:U303").dataValidation = { rule: { type: "list", formula1: "='选项配置'!$C$2:$C$7" } };
+  sheet.getRange("U4:U303").dataValidation = { rule: { type: "list", formula1: `='选项配置'!$C$2:$C$${statusValues.length + 1}` } };
   const range = sheet.getRange("A4:AS303");
   const rows = range.values;
 

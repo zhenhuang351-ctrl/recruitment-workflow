@@ -15,7 +15,7 @@ export const ledgerColumns = [
 
 export const stageValues = [
   "0-简历待评估", "1-电话沟通", "2-业务一面", "3-业务二面", "4-终面/交叉面",
-  "5-HRBP", "6-决策会", "Offer", "入职", "暂缓",
+  "5-HRBP", "6-决策会", "Offer", "入职",
 ];
 
 export const terminationReasons = [
@@ -23,7 +23,7 @@ export const terminationReasons = [
   "横向比较", "候选人自行退出", "岗位暂停", "其他待说明",
 ];
 
-export const statusValues = ["待处理", "待招聘者确认", "待候选人回复", "已约面", "已完成", "已终止"];
+export const statusValues = ["待处理", "待招聘者确认", "待候选人回复", "已约面", "进行中", "已完成", "暂缓", "终止"];
 const sourceValues = ["内部人才库", "员工推荐", "招聘平台", "猎头", "官网投递", "活动/社群", "其他"];
 const baseValues = ["北京", "上海", "广州", "深圳", "杭州", "成都", "武汉", "远程", "待确认"];
 const levelValues = ["专员/初级", "中级", "高级", "专家", "管理岗", "待确认"];
@@ -68,7 +68,7 @@ export async function buildLedger(roleName) {
   ledger.getRange("A1").format = { fill: "#0B2239", font: { bold: true, color: "#FFFFFF", size: 16 }, verticalAlignment: "center" };
   ledger.getRange("A1").format.rowHeight = 30;
   ledger.getRange("A2:AS2").merge();
-  ledger.getRange("A2").values = [["使用说明：一位候选人在本岗位仅保留一行；阶段、终止原因与岗位规则变更均需招聘者人工确认。年龄与工作年限只按岗位标准中已确认的配置提示。"]];
+  ledger.getRange("A2").values = [["使用说明：一位候选人在本岗位仅保留一行；主阶段记录候选人实际停留的流程节点，阶段状态使用暂缓或终止标记流程结果。所有流程变更均需招聘者人工确认。"]];
   ledger.getRange("A2").format = { fill: "#EAF3F7", font: { color: "#29546D", italic: true }, wrapText: true, verticalAlignment: "center" };
   ledger.getRange("A2").format.rowHeight = 38;
   ledger.getRange("A3:AS3").values = [ledgerColumns];
@@ -106,7 +106,7 @@ export async function buildLedger(roleName) {
   addListValidation(ledger, ledger.getRange("M4:M303"), "='选项配置'!$A$2:$A$8");
   addListValidation(ledger, ledger.getRange("P4:P303"), "='选项配置'!$I$2:$I$5");
   addListValidation(ledger, ledger.getRange("T4:T303"), `='选项配置'!$B$2:$B$${stageValues.length + 1}`);
-  addListValidation(ledger, ledger.getRange("U4:U303"), "='选项配置'!$C$2:$C$7");
+  addListValidation(ledger, ledger.getRange("U4:U303"), `='选项配置'!$C$2:$C$${statusValues.length + 1}`);
   addListValidation(ledger, ledger.getRange("Y4:Y303"), "='选项配置'!$G$2:$G$2");
   addListValidation(ledger, ledger.getRange("Z4:Z303"), "='选项配置'!$H$2:$H$4");
   addListValidation(ledger, ledger.getRange("AD4:AD303"), "='选项配置'!$F$2:$F$7");
