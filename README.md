@@ -18,9 +18,11 @@
 
 ```text
 workflow/
-├── AGENTS.md                 # 总入口：任何 AI 先读的路由与边界
-├── 00-招聘规则.md             # 全局规则
-├── templates/                # 可复制到新岗位的模板与提示词
+├── AGENTS.md                 # AI 的工作入口：路由、必读文件、事实源与人工确认边界
+├── 00-招聘规则.md             # 全局招聘规则：年龄、年限、隐私、流程状态与人工决策边界
+├── README.md                 # 可单独复制 workflow/ 时的精简使用说明；完整说明见本文件
+├── templates/                # 岗位澄清、简历评估、电话沟通、面试反馈等可复制模板
+├── scripts/                  # 创建台账、创建正式复盘看板、同步台账数据的本地脚本
 ├── roles/<岗位名称>/
 │   ├── CONTEXT.md            # 已确认规则、待确认问题、下一步
 │   ├── PIPELINE.json         # 已确认的流程阶段名称、顺序与状态
@@ -64,6 +66,23 @@ Skill 定义在 [workflow/skills](workflow/skills)。复制目录到支持该格
 2. 在 AI 对话中让它先读取 `workflow/AGENTS.md`，然后输入岗位名称、JD 和背景信息。
 3. 按“澄清 → 确认标准 → 简历评估 → 电话回写 → 面试反馈 → 复盘”推进。录入简历时必须补齐简历来源与简历收取时间；每轮完成后把确认的事实写回本地文件。
 4. 从正式招聘复盘看板模板创建该岗位的 `index.html`，同步台账后查看招聘漏斗、阶段时效、简历来源、流失原因和待办。
+
+### 创建台账与正式复盘看板
+
+岗位澄清并确认 `PIPELINE.json` 后，依次运行：
+
+```powershell
+node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --pipeline "岗位/岗位名称/PIPELINE.json" --out "岗位/岗位名称/candidate-ledger.xlsx"
+
+node workflow/scripts/create-review-dashboard.mjs --out "岗位/岗位名称/index.html"
+
+node workflow/scripts/sync-dashboard-data.mjs `
+  --ledger "岗位/岗位名称/candidate-ledger.xlsx" `
+  --dashboard "岗位/岗位名称/index.html" `
+  --role "岗位名称"
+```
+
+每次由 AI 和招聘者确认后更新台账，再运行最后一条同步命令。看板读取 Excel 中的主阶段、阶段状态、简历来源、收取时间和终止原因，并使用同一份阶段顺序生成漏斗。
 
 ## 验证
 

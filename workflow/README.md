@@ -1,63 +1,23 @@
-# Recruitment Evidence Workflow
+# Workflow 包说明
 
-一套可放进 Codex、ChatGPT、Claude、Cursor 等常见 AI 工具中使用的本地招聘工作流。它不连接招聘平台、不自动外联；AI 负责整理招聘证据，招聘者负责标准、例外和不可逆决策。
+`workflow/` 是可以整体复制到 Codex、ChatGPT、Claude、Cursor 等 AI 工作目录的可移植工作流包。完整的项目介绍、安装、命令和使用流程见仓库根目录的 [README](../README.md)；本文件只说明复制后各 Markdown 文件的职责。
 
-## 你怎么开始
+## 开始方式
 
-1. 把整个 `workflow` 文件夹放在一个本地项目中，并让 AI 先阅读 `AGENTS.md`。
-2. 新建岗位时，把 `templates/岗位澄清提示词.md` 和岗位名称/JD/业务背景发给 AI。AI 一次问一个问题，确认后生成该岗位的 `ROLE_STANDARD.md` 与 `SOURCING_STRATEGY.md`。
-   在候选人处理前，还必须确认流程阶段名称与顺序，并生成 `PIPELINE.json`。
-3. 为岗位运行台账生成器。每个岗位独立保留一份 `candidate-ledger.xlsx`。
-4. 上传或粘贴已授权的简历，并使用 `templates/简历评估提示词.md`。先让 AI 输出结构化简历和证据卡；确认后再创建候选人档案和台账行。
-5. 电话后粘贴已授权的沟通摘要，使用 `templates/电话沟通提示词.md`；面试后粘贴反馈，使用 `templates/面试反馈提示词.md`。
+将整个 `workflow/` 目录复制到本地工作区后，让 AI 优先读取 `AGENTS.md`。新岗位从 `templates/岗位澄清提示词.md` 开始；候选人处理前先确认岗位标准与 `PIPELINE.json`。
 
-## 目录约定
+## Markdown 文件职责
 
-```text
-workflow/
-├─ AGENTS.md                 # 跨 AI 的路由与人工确认边界
-├─ 00-招聘规则.md             # 年龄、年限、隐私和流程规则
-├─ templates/                # 可复制提示词和文件模板
-├─ scripts/                  # 一岗一表/脱敏复盘页生成器
-├─ roles/                    # 你的私有岗位工作区（默认不提交）
-└─ skills/                   # 可移植的 Skill 定义
-```
+| 文件或目录 | 用途 | 何时读取或更新 |
+| --- | --- | --- |
+| `AGENTS.md` | AI 的总入口：路由、事实源和人工确认边界 | 每次开始工作时 |
+| `00-招聘规则.md` | 年龄、年限、隐私与状态的全局规则 | 新建岗位和评估候选人前 |
+| `templates/` | 岗位澄清、简历评估、电话沟通、面试反馈等模板 | 对应环节开始时 |
+| `roles/<岗位>/CONTEXT.md` | 已确认规则、待澄清事项和下一步 | 每轮工作结束后 |
+| `roles/<岗位>/ROLE_STANDARD.md` | 岗位标准、评分口径和版本记录 | 岗位澄清确认后 |
+| `roles/<岗位>/SOURCING_STRATEGY.md` | 公司、Title、项目、技能和搜索词策略 | 岗位标准确认后或复盘时 |
+| `roles/<岗位>/PIPELINE.json` | 本岗位主阶段的名称、顺序和阶段状态 | 创建台账和同步看板前 |
+| `roles/<岗位>/candidate-ledger.xlsx` | 候选人流程的唯一事实来源 | 每次人工确认候选人进展后 |
+| `roles/<岗位>/index.html` | 正式招聘复盘看板 | 每次台账更新后同步 |
 
-## 年龄与工作年限
-
-年龄会保留在台账中。每个岗位澄清时，AI 都会问：是否有年龄要求、它是评分参考还是硬性标准、适用范围与信息缺失时怎么办。工作年限也要明确是总工作年限、对口岗位年限、对口项目年限，还是组合。没有被岗位负责人确认的规则，不参与判断。
-
-即便配置为硬性标准，AI 也只提示“待人工确认”，不会自行拒绝候选人或结束流程。
-
-## 生成一岗一表
-
-```powershell
-node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --pipeline "岗位/岗位名称/PIPELINE.json" --out "岗位/岗位名称/candidate-ledger.xlsx"
-```
-
-复盘页使用仓库内的正式招聘复盘看板模板；不再提供简易生成页。每个岗位先从模板创建自己的 `index.html`，再将候选人台账同步进去。
-
-## 让看板自动带入台账
-
-先为岗位创建正式看板：
-
-```powershell
-node workflow/scripts/create-review-dashboard.mjs --out "岗位/岗位名称/index.html"
-```
-
-然后运行下面命令，把该岗位台账的数据同步进看板。同步会读取 Excel 的“选项配置”中的主阶段顺序，并写入看板的漏斗配置；之后直接打开 `index.html` 即可查看正式看板。原有的上传按钮仍可用于临时查看其他表格。
-
-```powershell
-node workflow/scripts/sync-dashboard-data.mjs `
-  --ledger "岗位/岗位名称/candidate-ledger.xlsx" `
-  --dashboard "岗位/岗位名称/index.html" `
-  --role "岗位名称"
-```
-
-每次更新台账后再运行一次即可。这个同步过程只在本地读取 Excel 和改写 HTML，不调用 AI 模型，也不消耗模型 token。
-
-## 数据边界
-
-- Excel 是流程数据的唯一事实来源；候选人档案保存可追溯证据。
-- HTML 复盘页只显示脱敏聚合数据，不显示候选人姓名、年龄、薪资、简历和沟通原文。
-- 任何外联、约面、拒绝、录用、终止流程或修改岗位规则，均由招聘者人工确认。
+候选人简历证据、电话纪要和面试档案使用 Markdown 单独保存；候选人流程状态以 Excel 为准。正式看板只读取同步后的台账数据，不反向修改台账。
