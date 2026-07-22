@@ -30,6 +30,13 @@ test("resume assessment requires evidence and ledger updates", async () => {
   }
 });
 
+test("resume intake asks for source and received date before ledger writeback", async () => {
+  const text = await readFile("workflow/templates/简历评估提示词.md", "utf8");
+  for (const term of ["简历来源", "简历收取时间", "YYYY-MM-DD", "先只问一个问题"]) {
+    assert.match(text, new RegExp(term));
+  }
+});
+
 test("resume template puts conclusion and score before the evidence details", async () => {
   const text = await readFile("workflow/templates/简历评估提示词.md", "utf8");
   for (const term of ["结论先行", "能力证据得分", "证据覆盖率", "姓名｜建议", "**待核实**"]) {
