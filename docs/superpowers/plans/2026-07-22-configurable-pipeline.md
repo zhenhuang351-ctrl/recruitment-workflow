@@ -10,6 +10,45 @@
 
 ---
 
+### Task 0: Replace the private spreadsheet runtime and remove stale repository messaging
+
+**Files:**
+- Modify: `package.json`
+- Create: `package-lock.json`
+- Modify: `workflow/scripts/create-role-ledger.mjs`
+- Modify: `workflow/scripts/update-candidate-ledger.mjs`
+- Modify: `workflow/scripts/create-dashboard.mjs`
+- Modify: `workflow/scripts/sync-dashboard-data.mjs`
+- Modify: `workflow/scripts/format-ledger-grid.mjs`
+- Modify: `workflow/scripts/verify-ledger.mjs`
+- Modify: `README.md`
+- Modify: `docs/DESIGN.md`
+
+- [ ] **Step 1: Replace `@oai/artifact-tool` with public `exceljs`**
+
+Add `exceljs` to `package.json` dependencies and install it with npm. Rewrite spreadsheet imports and workbook load/save helpers so every script runs after `npm install`, without a Codex runtime path.
+
+- [ ] **Step 2: Preserve current ledger behavior**
+
+Keep the four worksheet names, centered grid formatting, main-stage/status dropdowns, termination reason dropdown, filters, frozen headers, and HTML data extraction. Use `exceljs` data validations and styles where supported.
+
+- [ ] **Step 3: Remove obsolete messaging**
+
+Remove all mentions of `Viy1204`, `recruiting-copilot`, private Codex spreadsheet dependencies, demo pages, and fixed role examples from current README and design documents. Keep only the project’s own goals, boundaries, workflow and installation instructions.
+
+- [ ] **Step 4: Verify public portability**
+
+Run `npm install` and `npm test` in the isolated worktree. Run `rg -n "Viy1204|recruiting-copilot|@oai/artifact-tool|虚构|示例岗位" README.md docs workflow package.json` and require no matches in current public documentation or runtime code.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add package.json package-lock.json README.md docs/DESIGN.md workflow
+git commit -m "Use public spreadsheet runtime"
+```
+
+---
+
 ### Task 1: Add a validated pipeline configuration module
 
 **Files:**

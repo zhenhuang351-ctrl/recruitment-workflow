@@ -23,6 +23,7 @@ workflow/
 ├── templates/                # 可复制到新岗位的模板与提示词
 ├── roles/<岗位名称>/
 │   ├── CONTEXT.md            # 已确认规则、待确认问题、下一步
+│   ├── PIPELINE.json         # 已确认的流程阶段名称、顺序与状态
 │   ├── ROLE_STANDARD.md      # 版本化岗位标准与评分口径
 │   ├── SOURCING_STRATEGY.md  # 公司、Title、项目、技能与检索式
 │   ├── KEYWORD_ITERATIONS.md # 有证据的关键词观察
@@ -68,6 +69,3 @@ npm.cmd install
 npm.cmd test
 ```
 
-## 参考与致谢
-
-方法论参考了 [Viy1204/recruiting-copilot 的设计文档](https://github.com/Viy1204/recruiting-copilot/blob/master/docs/DESIGN.md) 关于“岗位标准先行、记录可追溯、不可逆动作由人确认”的原则。本文档、数据结构、模板与 Skill 为独立撰写；本项目不包含招聘平台自动化。

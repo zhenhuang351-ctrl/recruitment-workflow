@@ -1,0 +1,15 @@
+import fs from "node:fs/promises";
+
+export const defaultStatuses = ["待处理", "待招聘者确认", "待候选人回复", "已约面", "进行中", "已完成", "暂缓", "终止"];
+
+export function normalizePipeline(input) {
+  if (!Array.isArray(input?.stages) || input.stages.length === 0) throw new Error("流程配置至少需要一个主阶段。");
+  const stages = input.stages.map(({ id, name }) => ({ id: Number(id), name: String(name ?? "").trim() })).sort((a, b) => a.id - b.id);
+  if (stages.some((stage) => !Number.isInteger(stage.id) || !stage.name)) throw new Error("每个阶段必须有整数 id 和非空名称。");
+  if (new Set(stages.map((stage) => stage.id)).size !== stages.length) throw new Error("流程阶段 id 不能重复。");
+  const statuses = [...new Set((input.statuses ?? defaultStatuses).map((value) => String(value).trim()).filter(Boolean))];
+  if (!statuses.includes("暂缓") || !statuses.includes("终止")) throw new Error("阶段状态必须包含暂缓和终止。");
+  return { stages, statuses };
+}
+export const stageLabels = (pipeline) => pipeline.stages.map(({ id, name }) => `${id}-${name}`);
+export async function readPipeline(filePath) { return normalizePipeline(JSON.parse(await fs.readFile(filePath, "utf8"))); }

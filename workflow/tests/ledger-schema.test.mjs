@@ -17,10 +17,10 @@ test("ledger distinguishes age and all three experience definitions", () => {
 });
 
 test("ledger builder creates four role-specific sheets and avoids automatic rejection", async () => {
-  const workbook = await buildLedger("示例岗位");
-  const sheets = await workbook.inspect({ kind: "sheet", include: "name" });
-  assert.match(sheets.ndjson, /候选人台账/);
-  assert.match(sheets.ndjson, /状态字典/);
-  assert.match(sheets.ndjson, /复盘口径/);
-  assert.match(sheets.ndjson, /选项配置/);
+  const workbook = await buildLedger("目标岗位");
+  const names = workbook.worksheets.map((sheet) => sheet.name).join(" ");
+  assert.match(names, /候选人台账/);
+  assert.match(names, /状态字典/);
+  assert.match(names, /复盘口径/);
+  assert.match(names, /选项配置/);
 });
