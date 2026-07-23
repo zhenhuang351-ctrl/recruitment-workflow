@@ -50,6 +50,14 @@ test("formal dashboard injection configures its real stage order and initialises
   assert.match(result, /"候选人姓名":"候选人A"/);
 });
 
+test("formal dashboard injection exits the default stage configuration modal", () => {
+  const source = "<body><script>let STAGES_CONFIG; let rawData; function transformData(v){return v} function initTimeSelectors(){} function refreshData(){} function showPageMessage(){} const DEFAULT_STAGES_CONFIG=[]; function getStageColor(){return '#000'};</script></body>";
+  const result = injectAutoLedgerData(source, [{ "候选人姓名": "候选人A" }], ["0-简历待评估"]);
+
+  assert.match(result, /document\.getElementById\('stageConfigModal'\)\.classList\.remove\('active'\)/);
+  assert.match(result, /document\.getElementById\('fileInput'\)\.disabled = false/);
+});
+
 test("sync CLI gives a usable command when required arguments are absent", async () => {
   await assert.rejects(
     execFileAsync(process.execPath, ["workflow/scripts/sync-dashboard-data.mjs"], { cwd: process.cwd() }),

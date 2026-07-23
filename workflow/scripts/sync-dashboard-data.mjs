@@ -55,6 +55,8 @@ function applyAutoLedgerData() {
   });
   rawData = transformData(AUTO_DASHBOARD_DATA);
   if (rawData.length === 0) return;
+  document.getElementById('stageConfigModal').classList.remove('active');
+  document.getElementById('fileInput').disabled = false;
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('mainContent').classList.add('active');
   initTimeSelectors();
