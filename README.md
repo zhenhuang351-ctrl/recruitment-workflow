@@ -31,11 +31,11 @@ workflow/
 │   ├── KEYWORD_ITERATIONS.md # 有证据的关键词观察
 │   ├── FEEDBACK_ITERATIONS.md
 │   ├── candidate-ledger.xlsx # 候选人流程唯一事实源
-│   └── index.html            # 从正式看板模板创建：漏斗、来源、流失原因与时效数据
+│   └── 招聘数据复盘.html      # 从正式看板模板创建：漏斗、来源、流失原因与时效数据
 └── skills/                   # 可移植的 AI Skill 定义
 ```
 
-同一岗位的候选人流程信息（例如所处阶段、约面日期、终止原因）统一以 Excel 台账为准；每位候选人的简历证据、电话纪要和面试反馈另存为 Markdown 档案。岗位目录中的 `index.html` 从正式招聘复盘看板模板创建：用于查看招聘漏斗、阶段人数与时效、简历来源、终止/流失原因和待跟进事项。请先更新 Excel，再同步看板，不要在看板中直接修改流程信息。
+同一岗位的候选人流程信息（例如所处阶段、约面日期、终止原因）统一以 Excel 台账为准；每位候选人的简历证据、电话纪要和面试反馈另存为 Markdown 档案。岗位目录中的 `招聘数据复盘.html` 从正式招聘复盘看板模板创建：用于查看招聘漏斗、阶段人数与时效、简历来源、终止/流失原因和待跟进事项。请先更新 Excel，再同步看板，不要在看板中直接修改流程信息。
 
 ## 文档与工作流说明
 
@@ -77,11 +77,11 @@ Skill 定义在 [workflow/skills](workflow/skills)。复制目录到支持该格
 ```powershell
 node workflow/scripts/create-role-ledger.mjs --role "岗位名称" --pipeline "岗位/岗位名称/PIPELINE.json" --out "岗位/岗位名称/candidate-ledger.xlsx" --capacity 1000
 
-node workflow/scripts/create-review-dashboard.mjs --out "岗位/岗位名称/index.html"
+node workflow/scripts/create-review-dashboard.mjs --out "岗位/岗位名称/招聘数据复盘.html"
 
 node workflow/scripts/sync-dashboard-data.mjs `
   --ledger "岗位/岗位名称/candidate-ledger.xlsx" `
-  --dashboard "岗位/岗位名称/index.html" `
+  --dashboard "岗位/岗位名称/招聘数据复盘.html" `
   --role "岗位名称"
 ```
 

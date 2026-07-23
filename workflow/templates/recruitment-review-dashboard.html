@@ -228,6 +228,7 @@
       margin-bottom: 20px;
       flex-wrap: wrap;
     }
+    .stage-config-modal { max-height: calc(100vh - 32px); }
     
     .filter-section {
       background: white;
@@ -757,6 +758,12 @@
       font-size: 11px;
       line-height: 1.5;
     }
+    .stage-analysis-note {
+      margin: 10px 0 0;
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.6;
+    }
     .analysis-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1230,10 +1237,10 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>招聘数据分析</h1>
+      <h1 data-dashboard-title>招聘数据分析</h1>
       <p>深入分析招聘流程，识别卡点，优化招聘效率</p>
     </div>
-    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+    <input id="fileInput" type="file" accept=".xlsx,.csv" />
     <div id="messageBanner" class="message-banner" role="status" aria-live="polite"></div>
 
     <!-- 空状态 -->
@@ -1241,7 +1248,7 @@
       <div class="empty-icon">📊</div>
       <h2>暂无数据</h2>
       <p>请上传招聘数据表格，开始分析招聘数据</p>
-      <button class="btn btn-primary" onclick="triggerFileUpload()">
+      <button class="btn btn-primary" data-upload-entry onclick="triggerFileUpload()">
         上传表格
       </button>
     </div>
@@ -1315,9 +1322,8 @@
     <!-- 主内容 -->
     <div id="mainContent" class="main-content">
       <div class="actions-bar">
-        <button class="btn btn-primary" onclick="triggerFileUpload()">
-          上传表格
-        </button>
+        <button class="btn btn-primary" data-upload-entry type="button" onclick="triggerFileUpload()">重新上传数据</button>
+        <button class="btn btn-secondary" data-upload-entry type="button" onclick="openStageConfigForReconfigure()">重新配置阶段</button>
         <button class="btn btn-secondary" onclick="exportReport()">导出报告</button>
       </div>
 
@@ -1473,11 +1479,13 @@
                   <th>到达人数</th>
                   <th>转化率</th>
                   <th>流失率</th>
-                  <th>当前停留时长（仅供参考）</th>
+                  <th>当前阶段的平均停留时长</th>
+                  <th>阶段流转平均耗时</th>
                 </tr>
               </thead>
               <tbody id="funnelTableBody"></tbody>
             </table>
+            <p id="stageAnalysisNote" class="stage-analysis-note">注：当前阶段的平均停留时长仅统计仍在该阶段进行中的候选人，用于识别实时积压；阶段流转平均耗时以“下一阶段日期 − 当前阶段日期”计算，用于判断该环节的历史处理效率。最后阶段没有下一阶段日期，不计算该指标。</p>
           </div>
           
           <!-- 对比模式下的第二表格 -->
@@ -1748,6 +1756,7 @@
     }
 
     function addStageConfigRow() {
+      STAGES_CONFIG = getStageConfigDraft();
       const code = STAGES_CONFIG.length;
       STAGES_CONFIG.push({ code, key: 'custom_' + code, label: '阶段' + code, color: getStageColor(code) });
       renderStageConfigRows();
@@ -1756,6 +1765,7 @@
 
     function removeLastStageConfigRow() {
       if (STAGES_CONFIG.length <= 1) return;
+      STAGES_CONFIG = getStageConfigDraft();
       STAGES_CONFIG.pop();
       renderStageConfigRows();
       markTemplatePreviewStale();
@@ -1769,6 +1779,14 @@
       error.hidden = true;
       document.getElementById('stageConfigModal').classList.remove('active');
       document.getElementById('fileInput').disabled = false;
+      if (rawData.length > 0) refreshData();
+    }
+
+    function openStageConfigForReconfigure() {
+      const error = document.getElementById('stageConfigError');
+      if (error) error.hidden = true;
+      renderStageConfigRows();
+      document.getElementById('stageConfigModal').classList.add('active');
     }
 
     document.getElementById('fileInput').disabled = true;
@@ -2409,7 +2427,7 @@
     }
 
     function hasStageDateColumns(columns) {
-      return columns.some(col => getStageCodeFromDateColumn(col) !== null);
+      return columns.some(col => getStageDateColumnCode(col) !== null);
     }
 
     async function readExcelAllSheets(arrayBuffer) {
@@ -2470,8 +2488,8 @@
     function parseFileHeader(file) {
       hidePageMessage();
       manualColumnMappingActive = false;
-      if (!/\.(xlsx|xls|csv)$/i.test(file.name || '')) {
-        showPageMessage('文件格式不支持，请上传 .xlsx、.xls 或 .csv 文件。');
+      if (!/\.(xlsx|csv)$/i.test(file.name || '')) {
+        showPageMessage('文件格式不支持，请上传 .xlsx 或 .csv 文件。');
         return;
       }
       const reader = new FileReader();
@@ -2658,6 +2676,10 @@
       return getStageByCode(code)?.label || '';
     }
 
+    function getConfiguredStageLabel(stageCode, fallback = '未识别阶段') {
+      return getStageNameByCode(stageCode) || fallback;
+    }
+
     function normalizeReasonText(value) {
       const text = String(value || '').trim();
       if (!text || text === '无' || text === '-') return '';
@@ -2686,24 +2708,53 @@
       return getFirstNonBlankValue(row, keys);
     }
 
-    function getStageCodeFromDateColumn(columnName) {
-      const text = normalizeHeaderText(columnName);
-      if (!text) return null;
-      if (/入职|到岗|onboard/.test(text)) return 8;
-      if (/offer/.test(text)) return 7;
-      if (/决策|加签/.test(text)) return 6;
-      if (/hrbp|hr面|bp面|hrbp面|hr/.test(text)) return 5;
-      if (/三面|终面|四面|业务终面/.test(text)) return 4;
-      if (/二面|业务交叉|交叉面/.test(text)) return 3;
-      if (/一面|初面|业务一面/.test(text)) return 2;
-      return null;
+    function getStageDateColumnCode(columnName) {
+      const raw = String(columnName || '').trim();
+      const numberedMatch = raw.match(/^(\d+)\s*[-_—－]?\s*.*(?:日期|时间|date)\s*$/i);
+      if (numberedMatch) {
+        const code = Number(numberedMatch[1]);
+        return isConfiguredStageCode(code) ? code : null;
+      }
+      const labelMatch = normalizeHeaderText(raw).match(/^(.*?)(?:日期|时间|date)$/i);
+      if (!labelMatch || !labelMatch[1] || labelMatch[1].length < 2) return null;
+
+      // 无编号时只做保守匹配：名称完全相同，或其中一个完整包含另一个。
+      // 例如“业务一面”可匹配“一面”；“二面”不会被猜成任意配置阶段。
+      const matchedStages = STAGES_CONFIG.filter(item => {
+        const configuredLabel = normalizeHeaderText(item.label);
+        const importedLabel = labelMatch[1];
+        return configuredLabel === importedLabel ||
+          configuredLabel.includes(importedLabel) ||
+          importedLabel.includes(configuredLabel);
+      });
+      return matchedStages.length === 1 ? matchedStages[0].code : null;
+    }
+
+    function getStageDatesFromRow(row) {
+      const stageDates = {};
+      let stageDateParseFailed = false;
+      let stageDateFuture = false;
+      Object.keys(row || {}).forEach(key => {
+        if (key === '__sheetName' || key === 'jobNameFromSheet') return;
+        const code = getStageDateColumnCode(key);
+        if (code === null) return;
+        const value = row[key];
+        if (isBlankValue(value)) return;
+        const date = parseDate(value);
+        if (date) {
+          stageDates[code] = date;
+          if (date > new Date()) stageDateFuture = true;
+        }
+        else stageDateParseFailed = true;
+      });
+      return { stageDates, stageDateParseFailed, stageDateFuture };
     }
 
     function inferStageFromDateColumns(row) {
       let bestCode = null;
       Object.keys(row || {}).forEach(key => {
         if (key === '__sheetName' || key === 'jobNameFromSheet') return;
-        const code = getStageCodeFromDateColumn(key);
+        const code = getStageDateColumnCode(key);
         if (code === null) return;
         const value = row[key];
         if (isBlankValue(value)) return;
@@ -2882,6 +2933,7 @@
           if (labels.length) matchedLabel = labels.join('、');
         }
         const parsedResumeTime = parseDate(resumeTime);
+        const stageDateInfo = getStageDatesFromRow(row);
         const hasRawTermReason = !!normalizeReasonText(rawTermReason) || !!finalTermReason;
         const standardReason = statusVal === 'terminated'
           ? normalizeTerminationReasonFromText([mainStatus, rawSubStatus, rawTermReason, finalTermReason, remark].filter(t => t && String(t).trim()).join(' '), hasRawTermReason)
@@ -2896,6 +2948,8 @@
         if (unknownStage || unknownTerminated) qualityIssues.push('未识别阶段');
         if (missingTerminationReason) qualityIssues.push('缺失终止原因');
         if (dateParseFailed) qualityIssues.push('日期格式异常');
+        if (stageDateInfo.stageDateParseFailed) qualityIssues.push('阶段日期格式异常');
+        if (stageDateInfo.stageDateFuture) qualityIssues.push('阶段日期晚于今天');
         
         return {
           id: 'cand-' + index, candidateName, jobName, jobNameFromSheet, source, company,
@@ -2907,7 +2961,10 @@
           unknownTerminated, unknownStage,
           rawResumeTime: resumeTime,
           missingJob, missingStage, missingTerminationReason, dateParseFailed, qualityIssues,
-          resumeTime: parsedResumeTime
+          resumeTime: parsedResumeTime,
+          stageDates: stageDateInfo.stageDates,
+          stageDateParseFailed: stageDateInfo.stageDateParseFailed,
+          stageDateFuture: stageDateInfo.stageDateFuture
         };
       }).filter(item => item.stageCode !== null || item.unknownTerminated || item.unknownStage);
     }
@@ -3210,25 +3267,39 @@
           }
         }
         
-        // 平均停留天数（估算：简历收取到今天/入职日的天数）
+        // 当前阶段平均停留天数：仅统计仍在该阶段进行中的候选人；优先当前阶段日期，缺失时回退前序阶段或简历收取日期。
         let avgStayDays = 0;
+        let stayDateCoverage = 0;
+        let stayEligibleCount = 0;
         if (directCount > 0) {
-          const relevantData = funnelSourceData.filter(item => item.stageCode === stage.code);
+          const relevantData = funnelSourceData.filter(item => item.stageCode === stage.code && item.status === 'in_progress');
           let totalDays = 0;
-          let validCount = 0;
-          const now = new Date();
+          stayEligibleCount = relevantData.length;
           relevantData.forEach(item => {
-            if (item.resumeTime) {
-              const endDate = item.status === 'passed' ? (item.resumeTime || now) : now;
-              const days = Math.round((now - item.resumeTime) / (1000 * 60 * 60 * 24));
-              if (days >= 0) {
-                totalDays += days;
-                validCount++;
-              }
+            const days = getStayDayCount(item);
+            if (days !== null) {
+              totalDays += days;
+              stayDateCoverage++;
             }
           });
-          avgStayDays = validCount > 0 ? Math.round(totalDays / validCount) : 0;
+          avgStayDays = stayDateCoverage > 0 ? Math.round(totalDays / stayDateCoverage) : 0;
         }
+
+        // 阶段流转平均耗时：统计所有已到达该阶段且已流转到下一阶段的候选人，衡量当前环节的历史处理速度。
+        let avgTransitionDays = 0;
+        let transitionDateCoverage = 0;
+        const transitionEligibleCount = stageData.length;
+        let transitionTotalDays = 0;
+        stageData.forEach(item => {
+          const days = getStageTransitionDayCount(item, stage.code);
+          if (days !== null) {
+            transitionTotalDays += days;
+            transitionDateCoverage++;
+          }
+        });
+        avgTransitionDays = transitionDateCoverage > 0
+          ? Math.round(transitionTotalDays / transitionDateCoverage)
+          : 0;
         
         result.push({
           ...stage,
@@ -3240,6 +3311,11 @@
           conversionRate,
           dropoutRate,
           avgStayDays,
+          stayDateCoverage,
+          stayEligibleCount,
+          avgTransitionDays,
+          transitionDateCoverage,
+          transitionEligibleCount,
           cumulativeCount
         });
       });
@@ -3266,18 +3342,46 @@
     }
 
     function getAttentionCandidates(data) {
-      return (data || []).filter(item => item.status !== 'terminated' && !item.unknownTerminated);
+      return (data || []).filter(item =>
+        item.status !== 'terminated' &&
+        !item.unknownTerminated &&
+        !(isFinalStageCode(item.stageCode) && item.status === 'passed')
+      );
     }
 
-    function getStayDayCount(item) {
-      if (!item || !item.resumeTime) return null;
-      const days = Math.round((new Date() - item.resumeTime) / (1000 * 60 * 60 * 24));
+    function getStageTransitionDayCount(item, stageCode) {
+      if (!item || stageCode === null || stageCode === undefined) return null;
+      const stageDates = item.stageDates || {};
+      if (stageCode >= STAGES_CONFIG.length - 1) return null;
+      const startDate = stageDates[stageCode];
+      const endDate = stageDates[stageCode + 1];
+      if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) return null;
+      if (!(endDate instanceof Date) || Number.isNaN(endDate.getTime())) return null;
+      const days = Math.floor((endDate - startDate) / 86400000);
       return days >= 0 ? days : null;
+    }
+
+    function getCurrentStageEntryDate(item) {
+      if (!item || item.stageCode === null || item.stageCode === undefined) return null;
+      const stageDates = item.stageDates || {};
+      for (let code = item.stageCode; code >= 0; code--) {
+        const date = stageDates[code];
+        if (date instanceof Date && !Number.isNaN(date.getTime())) return date;
+      }
+      const resumeDate = item.resumeTime instanceof Date ? item.resumeTime : parseDate(item.resumeTime);
+      return resumeDate instanceof Date && !Number.isNaN(resumeDate.getTime()) ? resumeDate : null;
+    }
+
+    function getStayDayCount(item, now = new Date()) {
+      if (!item || item.status !== 'in_progress') return null;
+      const entryDate = getCurrentStageEntryDate(item);
+      if (!entryDate || entryDate > now) return null;
+      return Math.floor((now - entryDate) / 86400000);
     }
 
     function getStayDayLabel(item) {
       const days = getStayDayCount(item);
-      return days === null ? '-' : days + '天';
+      return days === null ? '缺少阶段日期' : days + '天';
     }
 
     function formatBoardDate(value) {
@@ -3296,49 +3400,15 @@
     }
 
     function getPassedNextStepInfo(stageCode) {
-      const map = {
-        0: {
-          label: '待推进面试',
-          tone: 'medium',
-          advice: '当前简历评审已通过，尽快推进面试安排，确认候选人可面时间和面试官排期。'
-        },
-        1: {
-          label: '待推进一面',
-          tone: 'medium',
-          advice: '当前意向确认已通过，尽快推进一面安排，并同步候选人岗位信息和面试准备事项。'
-        },
-        2: {
-          label: '待推进二面',
-          tone: 'medium',
-          advice: '当前一面已通过，尽快推进二面安排，补齐一面反馈并明确下一轮面试重点。'
-        },
-        3: {
-          label: '待推进三面',
-          tone: 'medium',
-          advice: '当前二面已通过，尽快推进三面安排，确认业务侧下一轮评估人和时间。'
-        },
-        4: {
-          label: '待推进HRBP面',
-          tone: 'medium',
-          advice: '当前三面已通过，尽快推进 HRBP 面，提前确认候选人诉求、薪资预期和风险点。'
-        },
-        5: {
-          label: '待推进决策会',
-          tone: 'medium',
-          advice: '当前 HRBP 面已通过，尽快推进决策会，补齐面试结论、薪资信息和录用建议。'
-        },
-        6: {
-          label: '待推进Offer',
-          tone: 'high',
-          advice: '当前决策会已通过，尽快推进 Offer 沟通，确认薪资方案、接受意愿和发放时间。'
-        },
-        7: {
-          label: '待跟进入职',
-          tone: 'high',
-          advice: '当前 Offer 已通过，重点跟进入职时间、背调/材料、反悔风险和到岗确认。'
-        }
+      const currentIndex = getStageIndex(stageCode);
+      const currentStage = STAGES_CONFIG[currentIndex];
+      const nextStage = STAGES_CONFIG[currentIndex + 1];
+      if (!currentStage || !nextStage) return null;
+      return {
+        label: '待推进' + nextStage.label,
+        tone: currentIndex >= STAGES_CONFIG.length - 3 ? 'high' : 'medium',
+        advice: '当前「' + currentStage.label + '」已通过，尽快确认「' + nextStage.label + '」的负责人、时间和所需反馈，避免流程停滞。'
       };
-      return map[stageCode] || null;
     }
 
     function getCandidateRiskTags(item) {
@@ -3359,19 +3429,14 @@
       if (stayDays !== null && stayDays > 7) {
         tags.push({ label: '停留超 7 天', tone: 'high' });
       }
+      if (item.status === 'in_progress' && stayDays === null) {
+        tags.push({ label: '缺少阶段日期', tone: 'low' });
+      }
       if (nextStep) {
         tags.push({ label: nextStep.label, tone: nextStep.tone });
-      } else if (item.stageCode === 0) {
-        tags.push({ label: '待评审', tone: 'medium' });
-      }
-      if (!nextStep && item.stageCode === 1) {
-        tags.push({ label: '待确定意向', tone: 'medium' });
-      }
-        if (!nextStep && getStageByCode(item.stageCode)?.label === 'Offer') {
-        tags.push({ label: 'Offer 未入职', tone: 'high' });
-      }
-        if (!nextStep && getStageIndex(item.stageCode) >= 2 && !isFinalStageCode(item.stageCode)) {
-        tags.push({ label: '面试待反馈', tone: 'medium' });
+      } else if (item.status === 'in_progress') {
+        const stageLabel = getStageByCode(item.stageCode)?.label || '当前阶段';
+        tags.push({ label: '待处理' + stageLabel, tone: 'medium' });
       }
       if (hasInfoIssue) {
         tags.push({ label: '信息缺失', tone: 'medium' });
@@ -3383,28 +3448,12 @@
         advice = stayDays !== null && stayDays > 7
           ? '当前阶段已通过且停留超 7 天，' + nextStep.advice
           : nextStep.advice;
-      } else if (tags.some(tag => tag.label === 'Offer 未入职')) {
-        advice = '确认 Offer 接受意愿、入职时间和风险点，必要时补充候选人顾虑。';
       } else if (tags.some(tag => tag.label === '停留超 7 天')) {
-        if (item.stageCode === 0) {
-          advice = '优先推动简历评审，确认是否进入电话沟通或给出淘汰结论，避免简历长期堆积。';
-        } else if (item.stageCode === 1) {
-          advice = '优先联系候选人确认求职意向、薪资预期和可约面时间，明确是否继续推进。';
-        } else if (getStageIndex(item.stageCode) >= 2 && !isFinalStageCode(item.stageCode)) {
-          advice = '优先追面试反馈或决策结论，明确下一轮安排、通过结论或终止结论。';
-        } else {
-          advice = '优先检查停留原因，推动反馈、约面或阶段结论，避免流程长时间卡住。';
-        }
-      } else if (tags.some(tag => tag.label === '待评审')) {
-        advice = '尽快完成简历评审，判断是否符合岗位画像，并同步下一步电话沟通安排。';
-      } else if (tags.some(tag => tag.label === '待确定意向')) {
-        advice = '尽快确认候选人意向、当前机会状态、薪资预期和面试时间，减少低意向候选人占用漏斗。';
-      } else if (tags.some(tag => tag.label === '面试待反馈')) {
-        if (item.stageCode === 6) {
-          advice = '推动决策会结论，确认是否进入 Offer、补充加面或停止推进。';
-        } else {
-          advice = '补齐面试反馈，并明确下一轮安排、通过结论或淘汰结论。';
-        }
+        const stageLabel = getStageByCode(item.stageCode)?.label || '当前阶段';
+        advice = '优先确认「' + stageLabel + '」的卡点，推动负责人给出反馈、下一步安排或阶段结论。';
+      } else if (tags.some(tag => tag.label.startsWith('待处理'))) {
+        const stageLabel = getStageByCode(item.stageCode)?.label || '当前阶段';
+        advice = '尽快明确「' + stageLabel + '」的下一步动作和预计反馈时间，避免候选人长期停留。';
       } else if (tags.some(tag => tag.label === '信息缺失')) {
         advice = '补齐岗位、阶段、日期等关键字段，避免后续复盘和推进判断失真。';
       }
@@ -3465,28 +3514,28 @@
       content.style.display = '';
 
       const inProgress = candidates.filter(row => row.item.status === 'in_progress').length;
-      const offerOrPassed = candidates.filter(row => row.item.stageCode === 7 || row.item.status === 'passed').length;
-        const onboard = candidates.filter(row => isFinalStageCode(row.item.stageCode)).length;
+      const passed = candidates.filter(row => row.item.status === 'passed').length;
+      const finalCount = candidates.filter(row => isFinalStageCode(row.item.stageCode)).length;
+      const finalLabel = getFinalStage()?.label || '最终阶段';
       const stale = candidates.filter(row => row.risk.tags.some(tag => tag.label === '停留超 7 天')).length;
       statsGrid.innerHTML = [
         renderAttentionStat('需关注总数', candidates.length),
         renderAttentionStat('进行中', inProgress),
-        renderAttentionStat('Offer/通过', offerOrPassed),
-        renderAttentionStat('已入职', onboard),
+        renderAttentionStat('已通过', passed),
+        renderAttentionStat(finalLabel + '人数', finalCount),
         renderAttentionStat('停留超 7 天', stale)
       ].join('');
 
       const countByTag = label => candidates.filter(row => row.risk.tags.some(tag => tag.label === label)).length;
-      summaryGrid.innerHTML = [
-        renderAttentionRisk('待评审', countByTag('待评审'), '简历已进入评审阶段，需要尽快判断是否进入电话沟通。'),
-        renderAttentionRisk('待确定意向', countByTag('待确定意向'), '电话联系阶段需要确认候选人意向、薪资预期和可约面时间。'),
-        renderAttentionRisk('面试阶段待推进', countByTag('面试待反馈'), '一面至决策会阶段，需要补齐反馈或下一轮安排。'),
-        renderAttentionRisk('Offer 阶段未入职', countByTag('Offer 未入职'), '关注接受意愿、入职时间和可能反悔风险。'),
-        renderAttentionRisk('信息缺失', countByTag('信息缺失'), '字段不完整会影响复盘和推进判断。')
-      ].join('');
+      const riskSummaries = [
+        { label: '需要补充阶段日期', count: countByTag('缺少阶段日期'), note: '这些记录既缺少当前及前序阶段日期，也缺少可用的简历收取日期，因此停留时长显示为“—”；不影响漏斗和转化分析。' },
+        { label: '信息缺失', count: countByTag('信息缺失'), note: '字段不完整会影响复盘和推进判断。' }
+      ].filter(summary => summary.count > 0);
+      summaryGrid.innerHTML = riskSummaries.map(summary => renderAttentionRisk(summary.label, summary.count, summary.note)).join('');
+      summaryGrid.style.display = riskSummaries.length ? '' : 'none';
 
       let html = '<table class="analysis-table attention-table"><thead><tr>';
-      ['候选人', '岗位', '公司', '来源', '阶段', '状态', '简历收取时间', '停留天数', '风险标签', '建议动作'].forEach(header => {
+      ['候选人', '岗位', '公司', '来源', '阶段', '状态', '简历收取时间', '用于计算的阶段日期', '停留时长', '风险标签', '建议动作'].forEach(header => {
         html += '<th>' + escapeHtml(header) + '</th>';
       });
       html += '</tr></thead><tbody>';
@@ -3496,9 +3545,10 @@
         html += '<td>' + escapeHtml(item.jobName || item.jobNameFromSheet || '-') + '</td>';
         html += '<td>' + escapeHtml(item.company || '-') + '</td>';
         html += '<td>' + escapeHtml(item.source || '-') + '</td>';
-        html += '<td>' + escapeHtml(item.stageName || '-') + '</td>';
+        html += '<td>' + escapeHtml(getConfiguredStageLabel(item.stageCode, item.stageName || '-')) + '</td>';
         html += '<td>' + escapeHtml(getBoardStatusLabel(item.status)) + '</td>';
         html += '<td>' + escapeHtml(formatBoardDate(item.resumeTime)) + '</td>';
+        html += '<td>' + escapeHtml(formatBoardDate(getCurrentStageEntryDate(item))) + '</td>';
         html += '<td>' + escapeHtml(getStayDayLabel(item)) + '</td>';
         html += '<td>' + renderRiskBadges(risk.tags) + '</td>';
         html += '<td>' + escapeHtml(risk.advice) + '</td>';
@@ -3625,20 +3675,19 @@
       return Array.from(groups.entries()).map(([source, rows]) => {
         const reason = getTopEntry(getReasonDistribution(rows));
         const resumeCount = rows.length;
-        const firstInterviewCount = rows.filter(item => item.stageCode >= 2).length;
-        const offerStage = STAGES_CONFIG.find(stage => stage.label === 'Offer');
-        const offerCount = offerStage ? rows.filter(item => getStageIndex(item.stageCode) >= getStageIndex(offerStage.code)).length : 0;
-        const onboardCount = rows.filter(item => isFinalStageCode(item.stageCode)).length;
+        const stageCounts = getStageReachCounts(rows);
+        const finalCount = stageCounts[getFinalStage()?.code] || 0;
         return {
           source,
           resumeCount,
-          firstInterviewCount,
-          offerCount,
-          onboardCount,
-          onboardRate: percent(onboardCount, resumeCount),
+          stageCounts,
+          finalCount,
+          finalRate: percent(finalCount, resumeCount),
+          onboardCount: finalCount,
+          onboardRate: percent(finalCount, resumeCount),
           topReason: reason ? reason[0] : '-'
         };
-      }).sort((a, b) => b.resumeCount - a.resumeCount || b.onboardCount - a.onboardCount);
+      }).sort((a, b) => b.resumeCount - a.resumeCount || b.finalCount - a.finalCount);
     }
 
     function normalizeCompanyKey(value) {
@@ -3694,31 +3743,33 @@
       return groups.map(group => {
         const rows = group.rows;
         const resumeCount = rows.length;
-        const phoneCount = rows.filter(item => item.stageCode >= 1).length;
-        const firstCount = rows.filter(item => item.stageCode >= 2).length;
-        const hrbpPlusCount = rows.filter(item => item.stageCode >= 5).length;
-        const decisionCount = rows.filter(item => item.stageCode >= 6).length;
-        const offerStage = STAGES_CONFIG.find(stage => stage.label === 'Offer');
-        const offerCount = offerStage ? rows.filter(item => getStageIndex(item.stageCode) >= getStageIndex(offerStage.code)).length : 0;
-        const onboardCount = rows.filter(item => isFinalStageCode(item.stageCode)).length;
+        const stageCounts = getStageReachCounts(rows);
+        const finalCount = stageCounts[getFinalStage()?.code] || 0;
         const deepestCode = Math.max(...rows.map(item => item.stageCode ?? -1));
         const deepestStage = STAGES_CONFIG.find(stage => stage.code === deepestCode)?.label || '-';
         return {
           company: getCompanyDisplayName(rows),
           resumeCount,
-          phoneCount,
-          firstCount,
-          hrbpPlusCount,
-          decisionCount,
-          offerCount,
-          onboardCount,
+          stageCounts,
+          finalCount,
+          onboardCount: finalCount,
           deepestStage
         };
-      }).sort((a, b) =>
-        b.resumeCount - a.resumeCount ||
-        b.firstCount - a.firstCount ||
-        b.hrbpPlusCount - a.hrbpPlusCount
-      );
+      }).sort((a, b) => b.resumeCount - a.resumeCount || b.finalCount - a.finalCount);
+    }
+
+    function getStageReachCounts(rows) {
+      return Object.fromEntries(STAGES_CONFIG.map((stage, index) => [
+        stage.code,
+        (rows || []).filter(item => getStageIndex(item.stageCode) >= index).length
+      ]));
+    }
+
+    function getStageTransitionRates(stageCounts) {
+      return STAGES_CONFIG.slice(1).map((stage, index) => {
+        const previous = STAGES_CONFIG[index];
+        return percent(stageCounts[stage.code] || 0, stageCounts[previous.code] || 0);
+      });
     }
 
     function buildJobComparison(data) {
@@ -3732,27 +3783,16 @@
         const funnel = generateFunnelAnalysis(rows);
         const maxDrop = getMaxDropoff(funnel);
         const resumeCount = rows.length;
-        const resumeBase = funnel[0]?.count || 0;
-        const firstCount = funnel[2]?.count || 0;
-        const secondCount = funnel[3]?.count || 0;
-        const thirdCount = funnel[4]?.count || 0;
-        const hrbpCount = funnel[5]?.count || 0;
-        const decisionCount = funnel[6]?.count || 0;
+        const stageCounts = getStageReachCounts(rows);
+        const transitionRates = getStageTransitionRates(stageCounts);
+        const finalCount = stageCounts[getFinalStage()?.code] || 0;
         return {
           jobName,
           resumeCount,
-          resumeBase,
-          firstCount,
-          secondCount,
-          thirdCount,
-          hrbpCount,
-          firstRate: percent(firstCount, resumeBase),
-          secondRate: percent(secondCount, firstCount),
-          thirdRate: percent(thirdCount, secondCount),
-          hrbpRate: percent(hrbpCount, thirdCount),
-          decisionRate: percent(decisionCount, hrbpCount),
-          offerCount: funnel[7]?.count || 0,
-          onboardCount: funnel[8]?.count || 0,
+          stageCounts,
+          transitionRates,
+          finalCount,
+          onboardCount: finalCount,
           maxDrop: maxDrop ? maxDrop.label : '-'
         };
       }).sort((a, b) => b.resumeCount - a.resumeCount);
@@ -3766,6 +3806,8 @@
         { item: '未识别阶段', count: rows.filter(i => i.unknownStage || i.unknownTerminated).length, advice: '建议补充真实阶段，避免影响漏斗口径' },
         { item: '缺失终止原因', count: rows.filter(i => i.missingTerminationReason).length, advice: '建议补充终止原因，便于卡点分析' },
         { item: '日期格式异常', count: rows.filter(i => i.dateParseFailed).length, advice: '建议统一日期格式，例如 2026/5/26' },
+        { item: '阶段日期格式异常', count: rows.filter(i => i.stageDateParseFailed).length, advice: '阶段日期为可选字段；填写时请使用可识别的日期格式。' },
+        { item: '阶段日期晚于今天', count: rows.filter(i => i.stageDateFuture).length, advice: '请检查未来日期；该记录不会参与当前阶段停留时长计算。' },
         { item: '未填写简历来源', count: rows.filter(i => !normalizeCellText(i.source)).length, advice: '建议补充来源，便于渠道分析' },
         { item: '未填写简历收取时间', count: rows.filter(i => isBlankValue(i.rawResumeTime)).length, advice: '建议补充时间，便于月度/周度对比' },
         { item: '无法识别终止原因分类', count: rows.filter(i => i.status === 'terminated' && i.standardReason === '其他').length, advice: '建议细化终止原因，减少“其他”占比' }
@@ -3815,7 +3857,7 @@
         
         bar.innerHTML = `
           <div class="stage-info">
-            <div class="stage-name">${stage.label}</div>
+            <div class="stage-name">${escapeHtml(stage.label)}</div>
             <div class="stage-count">${stage.count}人</div>
           </div>
         `;
@@ -3858,13 +3900,19 @@
                                displayConversionRate >= 70 ? 'rate-good' : 
                                displayConversionRate >= 40 ? 'rate-warning' : 'rate-danger';
         
-        const daysStr = stage.avgStayDays > 0 ? stage.avgStayDays + '天' : '-';
+        const daysStr = stage.stayDateCoverage > 0
+          ? stage.avgStayDays + '天（' + stage.stayDateCoverage + '/' + stage.stayEligibleCount + '）'
+          : (stage.stayEligibleCount > 0 ? '—（缺少阶段日期）' : '-');
+        const transitionStr = stage.transitionDateCoverage > 0
+          ? stage.avgTransitionDays + '天（' + stage.transitionDateCoverage + '/' + stage.transitionEligibleCount + '）'
+          : '—';
         tr.innerHTML = `
-          <td class="stage-name">${stage.label}</td>
+          <td class="stage-name">${escapeHtml(stage.label)}</td>
           <td>${stage.count}</td>
           <td class="${conversionClass}">${displayConversionRate === null ? '起始' : displayConversionRate + '%'}</td>
           <td class="${displayDropoutRate === null ? '' : displayDropoutRate > 30 ? 'rate-danger' : 'rate-good'}">${displayDropoutRate === null ? '-' : displayDropoutRate + '%'}</td>
           <td>${daysStr}</td>
+          <td>${transitionStr}</td>
         `;
         
         tbody.appendChild(tr);
@@ -3873,13 +3921,15 @@
 
     function setStageTableHeader(mode) {
       const header = document.getElementById('stageTableHeader');
+      const note = document.getElementById('stageAnalysisNote');
       if (!header) return;
+      if (note) note.style.display = mode === 'normal' ? '' : 'none';
       if (mode === 'compare') {
         header.innerHTML = '<th>阶段</th><th>本期人数</th><th>上期人数</th><th>人数变化</th><th>本期转化率</th><th>转化率变化</th>';
       } else if (mode === 'trend') {
         header.innerHTML = '<th>期间</th><th>简历数</th><th>较上期</th><th>一面人数</th><th>Offer数</th><th>入职人数</th><th>变化判断</th>';
       } else {
-        header.innerHTML = '<th>阶段</th><th>到达人数</th><th>转化率</th><th>流失率</th><th>当前停留时长（仅供参考）</th>';
+        header.innerHTML = '<th>阶段</th><th>到达人数</th><th>转化率</th><th>流失率</th><th>当前阶段的平均停留时长</th><th>阶段流转平均耗时</th>';
       }
     }
 
@@ -3902,17 +3952,18 @@
     }
 
     function getFunnelMetric(funnelData) {
-      const firstStage = STAGES_CONFIG.find(stage => stage.label === '一面');
-      const offerStage = STAGES_CONFIG.find(stage => stage.label === 'Offer');
+      const firstStage = STAGES_CONFIG[0] || null;
       const finalStage = getFinalStage();
+      const stageCounts = Object.fromEntries((funnelData || []).map(stage => [stage.code, stage.count || 0]));
+      const finalCount = finalStage ? (stageCounts[finalStage.code] || 0) : 0;
       return {
         resumes: funnelData[0]?.count || 0,
-        first: getFunnelCountByLabel(funnelData, '一面'),
-        offers: getFunnelCountByLabel(funnelData, 'Offer'),
-        onboard: getFinalFunnelCount(funnelData),
-        firstLabel: firstStage?.label || '未配置',
-        offerLabel: offerStage?.label || '未配置',
-        finalLabel: finalStage?.label || '未配置'
+        stageCounts,
+        first: firstStage ? (stageCounts[firstStage.code] || 0) : 0,
+        final: finalCount,
+        onboard: finalCount,
+        firstLabel: firstStage?.label || '起始阶段',
+        finalLabel: finalStage?.label || '最终阶段'
       };
     }
 
@@ -3957,7 +4008,7 @@
         const crDiff = stage.conversionRate - prev.conversionRate;
         
         tr.innerHTML = `
-          <td class="stage-name">${stage.label}</td>
+          <td class="stage-name">${escapeHtml(stage.label)}</td>
           <td>${stage.count}</td>
           <td>${prev.count}</td>
           <td>${deltaHtml(countDiff, '人')}</td>
@@ -4013,13 +4064,12 @@
       const current = getFunnelMetric(generateFunnelAnalysis(buckets[buckets.length - 1].rows));
       const previous = getFunnelMetric(generateFunnelAnalysis(buckets[buckets.length - 2].rows));
       const resumeDiff = current.resumes - previous.resumes;
-      const firstDiff = current.first - previous.first;
-      const offerDiff = current.offers - previous.offers;
-      const onboardDiff = current.onboard - previous.onboard;
-      if (resumeDiff > 0 && firstDiff < 0) return '最近一期简历量上升，但一面人数下降，建议关注渠道质量和简历筛选标准。';
-      if (resumeDiff < 0 && firstDiff > 0) return '最近一期简历量下降，但一面人数提升，候选人质量或筛选效率有所改善。';
-      if (offerDiff < 0 && current.first >= previous.first) return '最近一期面试推进未明显减少，但 Offer 产出下降，建议复盘面试通过标准和候选人意向。';
-      return '最近一期简历数' + deltaText(resumeDiff, '人') + '，一面人数' + deltaText(firstDiff, '人') + '，Offer数' + deltaText(offerDiff, '人') + '，入职人数' + deltaText(onboardDiff, '人') + '。';
+      const finalDiff = current.final - previous.final;
+      const startLabel = current.firstLabel;
+      const finalLabel = current.finalLabel;
+      if (resumeDiff > 0 && finalDiff < 0) return '最近一期简历量上升，但' + finalLabel + '人数下降，建议复盘各相邻阶段的转化与渠道质量。';
+      if (resumeDiff < 0 && finalDiff > 0) return '最近一期简历量下降，但' + finalLabel + '人数提升，当前流程推进质量有所改善。';
+      return '最近一期' + startLabel + '人数' + deltaText(resumeDiff, '人') + '，' + finalLabel + '人数' + deltaText(finalDiff, '人') + '。';
     }
 
     function renderOfflineLineChart(canvas, labels, datasets) {
@@ -4081,12 +4131,15 @@
       }
       const labels = buckets.map(bucket => bucket.label);
       const metrics = buckets.map(bucket => getFunnelMetric(generateFunnelAnalysis(bucket.rows)));
-      const datasets = [
-        { label: '简历数', data: metrics.map(item => item.resumes), borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.12)', tension: 0.3, pointRadius: 3 },
-        { label: '一面人数', data: metrics.map(item => item.first), borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.12)', tension: 0.3, pointRadius: 3 },
-        { label: 'Offer数', data: metrics.map(item => item.offers), borderColor: '#84CC16', backgroundColor: 'rgba(132,204,22,0.12)', tension: 0.3, pointRadius: 3 },
-        { label: '入职人数', data: metrics.map(item => item.onboard), borderColor: '#6366F1', backgroundColor: 'rgba(99,102,241,0.12)', tension: 0.3, pointRadius: 3 }
-      ];
+      const trendColors = ['#3B82F6', '#F59E0B', '#84CC16', '#6366F1', '#EC4899', '#14B8A6', '#F97316', '#8B5CF6', '#64748B', '#10B981', '#E11D48'];
+      const datasets = STAGES_CONFIG.map((stage, index) => ({
+        label: stage.label + '人数',
+        data: metrics.map(item => item.stageCounts[stage.code] || 0),
+        borderColor: trendColors[index % trendColors.length],
+        backgroundColor: trendColors[index % trendColors.length] + '22',
+        tension: 0.3,
+        pointRadius: 3
+      }));
       if (!canvas || typeof Chart === 'undefined') {
         renderOfflineLineChart(canvas, labels, datasets);
         if (summary) summary.textContent = renderTrendSummary(buckets);
@@ -4234,7 +4287,7 @@
           const crDiffText = cur.conversionRate + '%' + crSymbol;
 
           html += '<tr>';
-          html += '<td><b>' + stage.label + '</b></td>';
+          html += '<td><b>' + escapeHtml(stage.label) + '</b></td>';
           html += '<td>' + cur.count + '</td>';
           html += '<td>' + prev.count + '</td>';
           html += '<td class="' + countClass + '">' + countDiffText + '</td>';
@@ -4272,7 +4325,7 @@
           .join('、') || '-';
 
         html += '<div class="stage-detail-card">';
-        html += '<h4>' + stage.label + ' → ' + nextStage.label + '</h4>';
+        html += '<h4>' + escapeHtml(stage.label) + ' → ' + escapeHtml(nextStage.label) + '</h4>';
         html += '<div class="termination-table-wrap"><table class="stage-summary-table">';
         html += '<thead><tr>';
         html += '<th>阶段流向</th>';
@@ -4339,7 +4392,7 @@
         html += '<p style="margin:8px 0 4px 0;font-weight:bold;font-size:13px;">📈 各阶段终止人数：</p>';
         const stageTermCount = {};
         allTerminated.forEach(item => {
-          const key = item.stageName;
+          const key = getConfiguredStageLabel(item.stageCode);
           stageTermCount[key] = (stageTermCount[key] || 0) + 1;
         });
         html += '<ul style="margin:4px 0;">';
@@ -4451,7 +4504,7 @@
         if (!curData || curData.count === 0) return;
         const stageData = analysisData.filter(item => item.stageCode === stage.code);
         const reason = getTopEntry(getReasonDistribution(stageData));
-        html += '<tr><td><b>' + stage.label + '</b></td><td>' + curData.count + '</td><td>' + curData.conversionRate + '%</td><td>' + escapeHtml(reason ? reason[0] + '（' + reason[1] + '人）' : '-') + '</td></tr>';
+        html += '<tr><td><b>' + escapeHtml(stage.label) + '</b></td><td>' + curData.count + '</td><td>' + curData.conversionRate + '%</td><td>' + escapeHtml(reason ? reason[0] + '（' + reason[1] + '人）' : '-') + '</td></tr>';
       });
       html += '</tbody></table></div></details>';
       textDiv.innerHTML = html;
@@ -4494,7 +4547,7 @@
       const dist = {};
       getAnalyzableData(data).forEach(item => {
         if (item.status !== 'terminated' || item.standardReason !== reason) return;
-        const key = item.stageName || '未识别阶段';
+        const key = getConfiguredStageLabel(item.stageCode);
         dist[key] = (dist[key] || 0) + 1;
       });
       const top = getTopEntry(dist);
@@ -4504,7 +4557,7 @@
     function getStageTopReasonInfo(data, stageName) {
       const dist = {};
       getAnalyzableData(data).forEach(item => {
-        if (item.status !== 'terminated' || item.stageName !== stageName || !item.standardReason) return;
+        if (item.status !== 'terminated' || getConfiguredStageLabel(item.stageCode) !== stageName || !item.standardReason) return;
         dist[item.standardReason] = (dist[item.standardReason] || 0) + 1;
       });
       const top = getTopEntry(dist);
@@ -4674,7 +4727,7 @@
       if (totalTerminated > 0) {
         const stageTermCount = {};
         analysisData.filter(item => item.status === 'terminated').forEach(item => {
-          const key = item.stageName || '未识别阶段';
+          const key = getConfiguredStageLabel(item.stageCode);
           stageTermCount[key] = (stageTermCount[key] || 0) + 1;
         });
         const stageRows = Object.entries(stageTermCount).sort((a, b) => b[1] - a[1]);
@@ -4748,7 +4801,7 @@
           .join('、') || '-';
 
         html += '<tr>';
-        html += '<td><b>' + stage.label + ' → ' + nextStage.label + '</b></td>';
+        html += '<td><b>' + escapeHtml(stage.label) + ' → ' + escapeHtml(nextStage.label) + '</b></td>';
         html += '<td>到达 <b>' + curData.count + '</b> 人，进入下一阶段 <b>' + nextCount + '</b> 人</td>';
         html += '<td>转化率 <b>' + curData.conversionRate + '%</b><br>流失 <b>' + dropoutCount + '</b> 人（' + curData.dropoutRate + '%）</td>';
         html += '<td>进行中 <b>' + inProgress + '</b> 人<br>通过 <b>' + passed + '</b> 人<br>终止 <b>' + terminatedInStage.length + '</b> 人</td>';
@@ -4764,26 +4817,19 @@
       const channelRows = buildChannelAnalysis(data).map(row => [
         escapeHtml(row.source),
         row.resumeCount,
-        row.firstInterviewCount,
-        row.offerCount,
-        row.onboardCount,
-        row.onboardRate + '%',
+        ...STAGES_CONFIG.map(stage => row.stageCounts[stage.code] || 0),
+        row.finalRate + '%',
         escapeHtml(row.topReason)
       ]);
-      renderCompactTable('sourceAnalysis', ['渠道', '简历数', '一面人数', 'Offer人数', '入职人数', '入职率', '主要流失原因'], channelRows, '暂无渠道数据');
+      renderCompactTable('sourceAnalysis', ['渠道', '简历数', ...STAGES_CONFIG.map(stage => stage.label + '人数'), getFinalStage().label + '转化率', '主要流失原因'], channelRows, '暂无渠道数据');
 
       const companyRows = buildCompanyAnalysis(data).map(row => [
         escapeHtml(row.company),
         row.resumeCount,
-        row.phoneCount,
-        row.firstCount,
-        row.hrbpPlusCount,
-        row.decisionCount,
-        row.offerCount,
-        row.onboardCount,
+        ...STAGES_CONFIG.map(stage => row.stageCounts[stage.code] || 0),
         escapeHtml(row.deepestStage)
       ]);
-      renderCompactTable('companyAnalysis', ['当前公司', '候选人数量', '电话联系', '一面量', 'HRBP面量', '决策会面量', 'Offer', '入职数', '最深阶段'], companyRows, '暂无公司数据');
+      renderCompactTable('companyAnalysis', ['当前公司', '候选人数量', ...STAGES_CONFIG.map(stage => stage.label + '人数'), '最深阶段'], companyRows, '暂无公司数据');
 
       const quality = buildQualityChecks(data);
       const sourceMissing = quality.find(row => row.item === '未填写简历来源')?.count || 0;
@@ -4792,7 +4838,9 @@
       const stageUnknown = quality.find(row => row.item === '未识别阶段')?.count || 0;
       const reasonMissing = quality.find(row => row.item === '缺失终止原因')?.count || 0;
       const dateFailed = quality.find(row => row.item === '日期格式异常')?.count || 0;
-      let qualityHtml = '数据质量提示：未填写来源 <b>' + sourceMissing + '</b> 条，未填写时间 <b>' + timeMissing + '</b> 条，缺失阶段 <b>' + stageMissing + '</b> 条，未识别阶段 <b>' + stageUnknown + '</b> 条，缺失终止原因 <b>' + reasonMissing + '</b> 条，日期格式异常 <b>' + dateFailed + '</b> 条。建议补齐关键字段以提升分析准确性。';
+      const stageDateFailed = quality.find(row => row.item === '阶段日期格式异常')?.count || 0;
+      const stageDateFuture = quality.find(row => row.item === '阶段日期晚于今天')?.count || 0;
+      let qualityHtml = '数据质量提示：未填写来源 <b>' + sourceMissing + '</b> 条，未填写时间 <b>' + timeMissing + '</b> 条，缺失阶段 <b>' + stageMissing + '</b> 条，未识别阶段 <b>' + stageUnknown + '</b> 条，缺失终止原因 <b>' + reasonMissing + '</b> 条，日期格式异常 <b>' + dateFailed + '</b> 条，阶段日期格式异常 <b>' + stageDateFailed + '</b> 条，阶段日期晚于今天 <b>' + stageDateFuture + '</b> 条。阶段日期为可选字段，填写后可启用真实的当前阶段停留时长分析。';
       if (autoImportWarnings.length > 0) {
         qualityHtml += '<br><br><b>自动识别提示：</b>' + autoImportWarnings.slice(0, 5).map(item => escapeHtml(item)).join('；');
       }
@@ -4819,16 +4867,11 @@
       const jobRows = jobRowsRaw.map(row => [
         escapeHtml(row.jobName),
         row.resumeCount,
-        formatRateBadge(row.firstRate, row.resumeBase),
-        formatRateBadge(row.secondRate, row.firstCount),
-        formatRateBadge(row.thirdRate, row.secondCount),
-        formatRateBadge(row.hrbpRate, row.thirdCount),
-        formatRateBadge(row.decisionRate, row.hrbpCount),
-        row.offerCount,
-        row.onboardCount,
+        ...row.transitionRates.map((rate, index) => formatRateBadge(rate, row.stageCounts[STAGES_CONFIG[index].code])),
+        row.finalCount,
         escapeHtml(row.maxDrop)
       ]);
-      renderCompactTable('jobAnalysis', ['岗位', '简历数', '一面转化率', '二面转化率', '三面转化率', 'HRBP面转化率', '决策会转化率', 'Offer数', '入职数', '最大卡点'], jobRows, '暂无岗位数据');
+      renderCompactTable('jobAnalysis', ['岗位', '简历数', ...STAGES_CONFIG.slice(1).map((stage, index) => STAGES_CONFIG[index].label + ' → ' + stage.label + '转化率'), getFinalStage().label + '人数', '最大卡点'], jobRows, '暂无岗位数据');
     }
 
     function setStatCard(valueId, value, label, delta = '') {
@@ -4909,18 +4952,15 @@
       const curMetric = getFunnelMetric(funnelData);
       const prevMetric = getFunnelMetric(prevFunnel);
       const resumeDiff = curMetric.resumes - prevMetric.resumes;
-      const firstDiff = curMetric.first - prevMetric.first;
-      const offerDiff = curMetric.offers - prevMetric.offers;
-      if (resumeDiff > 0 && firstDiff < 0) {
-        box.textContent = '趋势判断：本期简历量较上期增加 ' + resumeDiff + ' 人，但一面人数下降 ' + Math.abs(firstDiff) + ' 人，说明简历量增加未同步转化为有效面试，建议关注渠道质量和简历筛选标准。';
-      } else if (resumeDiff < 0 && firstDiff > 0) {
-        box.textContent = '趋势判断：本期简历量较上期减少 ' + Math.abs(resumeDiff) + ' 人，但一面人数增加 ' + firstDiff + ' 人，说明候选人质量或筛选效率有所改善。';
-      } else if (offerDiff < 0 && curMetric.first >= prevMetric.first) {
-        box.textContent = '趋势判断：本期面试推进未明显减少，但 Offer 产出下降，建议复盘面试通过标准、薪资预期和候选人意向确认。';
-      } else if (resumeDiff === 0 && firstDiff === 0 && offerDiff === 0) {
+      const finalDiff = curMetric.final - prevMetric.final;
+      if (resumeDiff > 0 && finalDiff < 0) {
+        box.textContent = '趋势判断：本期简历量较上期增加 ' + resumeDiff + ' 人，但「' + curMetric.finalLabel + '」人数下降 ' + Math.abs(finalDiff) + ' 人，建议关注各阶段转化与渠道质量。';
+      } else if (resumeDiff < 0 && finalDiff > 0) {
+        box.textContent = '趋势判断：本期简历量较上期减少 ' + Math.abs(resumeDiff) + ' 人，但「' + curMetric.finalLabel + '」人数增加 ' + finalDiff + ' 人，当前流程推进质量有所改善。';
+      } else if (resumeDiff === 0 && finalDiff === 0) {
         box.textContent = '趋势判断：本期核心指标与上期基本持平，建议继续观察终止原因和阶段转化是否出现结构性变化。';
       } else {
-        box.textContent = '趋势判断：本期简历量较上期' + deltaText(resumeDiff, '人') + '，一面人数' + deltaText(firstDiff, '人') + '，Offer数' + deltaText(offerDiff, '人') + '，建议结合阶段环比和终止原因变化判断质量。';
+        box.textContent = '趋势判断：本期「' + curMetric.firstLabel + '」人数较上期' + deltaText(resumeDiff, '人') + '，「' + curMetric.finalLabel + '」人数' + deltaText(finalDiff, '人') + '，建议结合阶段环比和终止原因变化判断质量。';
       }
     }
 
@@ -4929,13 +4969,12 @@
       const statData = getAnalyzableData(data);
       const totalRecords = statData.length;
       const metric = getFunnelMetric(funnelData);
-      const offers = metric.offers;
-      const onboard = metric.onboard;
+      const finalCount = metric.final;
       const maxDrop = getMaxDropoff(funnelData);
       const topReason = getTopEntry(getReasonDistribution(statData));
       
       const conversionRate = totalRecords > 0 ? 
-        Math.round((onboard / totalRecords) * 100) : 0;
+        Math.round((finalCount / totalRecords) * 100) : 0;
 
       if (dimension !== 'overall') {
         const curMetric = getFunnelMetric(funnelData);
@@ -4943,10 +4982,10 @@
         const changes = prevFunnel ? getWorstAndBestChange(funnelData, prevFunnel) : { worsening: null, improving: null };
         setStatCard('statTotalResumes', curMetric.resumes, '简历总数', prevMetric ? '较上期 ' + deltaText(curMetric.resumes - prevMetric.resumes, '人') : '上期无数据');
         setStatCard('statConversionRate', curMetric.first, curMetric.firstLabel + '人数', prevMetric ? '较上期 ' + deltaText(curMetric.first - prevMetric.first, '人') : '上期无数据');
-        setStatCard('statOffers', curMetric.offers, curMetric.offerLabel + '数', prevMetric ? '较上期 ' + deltaText(curMetric.offers - prevMetric.offers, '人') : '上期无数据');
-        const onboardDelta = prevMetric ? '较上期 ' + deltaText(curMetric.onboard - prevMetric.onboard, '人') : '上期无数据';
-        const hcText = renderHcAchievement(curMetric.onboard);
-        setStatCard('statOnboard', curMetric.onboard + hcText, curMetric.finalLabel + '人数', onboardDelta);
+        setStatCard('statOffers', curMetric.final + renderHcAchievement(curMetric.final), curMetric.finalLabel + '人数', prevMetric ? '较上期 ' + deltaText(curMetric.final - prevMetric.final, '人') : '上期无数据');
+        const finalRate = percent(curMetric.final, curMetric.resumes);
+        const prevFinalRate = prevMetric ? percent(prevMetric.final, prevMetric.resumes) : 0;
+        setStatCard('statOnboard', finalRate + '%', curMetric.finalLabel + '转化率', prevMetric ? '较上期 ' + deltaText(finalRate - prevFinalRate, '%') : '上期无数据');
         setStatCard('statMaxDropStage', changes.improving ? changes.improving.label : '-', '改善亮点', changes.improving ? '转化率提升 ' + changes.improving.rateDiff + '%' : '暂无明显提升');
         setStatCard('statTopReason', changes.worsening ? changes.worsening.label : '-', '需关注下降', changes.worsening ? '转化率下降 ' + Math.abs(changes.worsening.rateDiff) + '%' : '暂无明显下降');
         renderTrendInsight(funnelData, data, prevFunnel, prevData, dimension);
@@ -4955,8 +4994,8 @@
       
       setStatCard('statTotalResumes', totalRecords, '简历总数');
       setStatCard('statConversionRate', conversionRate + '%', '整体' + metric.finalLabel + '转化率');
-      setStatCard('statOffers', offers, metric.offerLabel + '数');
-      setStatCard('statOnboard', onboard + renderHcAchievement(onboard), metric.finalLabel + '人数');
+      setStatCard('statOffers', finalCount + renderHcAchievement(finalCount), metric.finalLabel + '人数');
+      setStatCard('statOnboard', percent(finalCount, totalRecords) + '%', metric.finalLabel + '转化率');
       setStatCard('statMaxDropStage', maxDrop ? maxDrop.label : '-', '最大流失阶段');
       setStatCard('statTopReason', topReason ? topReason[0] : '-', '最高频终止原因');
       renderTrendInsight(funnelData, data, null, null, 'overall');
@@ -5446,6 +5485,19 @@
       }));
     };
     window.generateFunnelAnalysisForTest = generateFunnelAnalysis;
+    window.transformDataForTest = transformData;
+    window.getStayDayCountForTest = getStayDayCount;
+    window.getCandidateRiskTagsForTest = getCandidateRiskTags;
+    window.buildChannelAnalysisForTest = buildChannelAnalysis;
+    window.buildCompanyAnalysisForTest = buildCompanyAnalysis;
+    window.buildJobComparisonForTest = buildJobComparison;
+    window.renderDeepAnalysisForTest = renderDeepAnalysis;
+    window.renderJobComparisonForTest = renderJobComparison;
+    window.getAttentionCandidatesForTest = getAttentionCandidates;
+    window.renderAttentionBoardForTest = renderAttentionBoard;
+    window.setRawDataForTest = function(rows) { rawData = rows; };
+    window.renderBottleneckModulesForTest = renderBottleneckModules;
+    window.renderTableForTest = renderTable;
 
     // 时间维度切换
     document.getElementById('timeDimension').addEventListener('change', function() {

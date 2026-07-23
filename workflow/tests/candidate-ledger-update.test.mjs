@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decisionToLedgerPatch, mergeCandidate } from "../scripts/update-candidate-ledger.mjs";
+import { decisionToLedgerPatch, mergeCandidate, stageStatusToLedgerPatch } from "../scripts/update-candidate-ledger.mjs";
+
+test("direct stage and status updates normalise a bare stage name", () => {
+  const pipeline = { stages: [{ id: 0, name: "简历初筛" }, { id: 1, name: "电话沟通" }], statuses: ["进行中", "通过", "终止"] };
+  const patch = stageStatusToLedgerPatch({ candidateId: "C-001", name: "A", stage: "电话沟通", status: "进行中" }, pipeline);
+  assert.equal(patch.主阶段, "1-电话沟通");
+  assert.equal(patch.阶段状态, "进行中");
+  assert.equal(patch.终止原因, "");
+});
+
+test("direct termination requires a reason", () => {
+  const pipeline = { stages: [{ id: 0, name: "简历初筛" }], statuses: ["进行中", "通过", "终止"] };
+  assert.throws(() => stageStatusToLedgerPatch({ candidateId: "C-001", name: "A", stage: "简历初筛", status: "终止" }, pipeline), /终止原因/);
+});
 
 test("termination is a stage status and preserves the reached main stage and reason", () => {
   const patch = decisionToLedgerPatch({

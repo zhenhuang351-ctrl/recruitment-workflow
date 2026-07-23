@@ -31,12 +31,14 @@ export function rowsFromLedgerValues(values, role) {
     .map((row) => normalizeReviewRow(row, role));
 }
 
-function reviewRuntimeBlock(rows, stageOrder) {
+function reviewRuntimeBlock(rows, stageOrder, { role = "" } = {}) {
   const safeRows = JSON.stringify(rows).replaceAll("<", "\\u003c");
   const safeStages = JSON.stringify(stageOrder).replaceAll("<", "\\u003c");
+  const safeRole = JSON.stringify(role).replaceAll("<", "\\u003c");
   return `${DATA_START}
 const AUTO_DASHBOARD_DATA = ${safeRows};
 const AUTO_DASHBOARD_STAGE_ORDER = ${safeStages};
+const AUTO_DASHBOARD_ROLE = ${safeRole};
 
 function loadAutoLedgerData() {
   return { rows: AUTO_DASHBOARD_DATA, stageOrder: AUTO_DASHBOARD_STAGE_ORDER };
@@ -55,10 +57,17 @@ function applyAutoLedgerData() {
   });
   rawData = transformData(AUTO_DASHBOARD_DATA);
   if (rawData.length === 0) return;
-  document.getElementById('stageConfigModal').classList.remove('active');
-  document.getElementById('fileInput').disabled = false;
-  document.getElementById('emptyState').classList.add('hidden');
-  document.getElementById('mainContent').classList.add('active');
+  document.getElementById('stageConfigModal')?.classList.remove('active');
+  const fileInput = document.getElementById('fileInput');
+  if (fileInput) fileInput.disabled = true;
+  document.body.dataset.workflowSynced = 'true';
+  document.querySelectorAll('[data-upload-entry]').forEach((element) => { element.hidden = true; });
+  const title = AUTO_DASHBOARD_ROLE ? AUTO_DASHBOARD_ROLE + '｜招聘数据复盘' : '招聘数据复盘';
+  document.title = title;
+  const heading = document.querySelector('[data-dashboard-title]');
+  if (heading) heading.textContent = title;
+  document.getElementById('emptyState')?.classList.add('hidden');
+  document.getElementById('mainContent')?.classList.add('active');
   initTimeSelectors();
   refreshData();
   showPageMessage('已从候选人台账加载 ' + rawData.length + ' 条招聘记录。', 'success');
@@ -69,8 +78,8 @@ ${DATA_END}`;
 }
 
 /** Insert or replace the role-local data block without changing the formal dashboard UI. */
-export function injectAutoLedgerData(html, rows, stageOrder = []) {
-  const block = reviewRuntimeBlock(rows, stageOrder);
+export function injectAutoLedgerData(html, rows, stageOrder = [], options = {}) {
+  const block = reviewRuntimeBlock(rows, stageOrder, options);
   const start = html.indexOf(DATA_START);
   const end = html.indexOf(DATA_END);
   if (start >= 0 && end >= start) return `${html.slice(0, start)}${block}${html.slice(end + DATA_END.length)}`;
@@ -92,14 +101,21 @@ async function readLedger(ledgerPath) {
   return { values, stages };
 }
 
-export async function syncDashboard({ ledgerPath, dashboardPath, role }) {
+export async function syncDashboard({ ledgerPath, dashboardPath, role, contextPath }) {
   const { values, stages } = await readLedger(ledgerPath);
   const html = await fs.readFile(dashboardPath, "utf8");
-  const updated = injectAutoLedgerData(html, rowsFromLedgerValues(values, role), stages);
+  const updated = injectAutoLedgerData(html, rowsFromLedgerValues(values, role), stages, { role });
   const temporaryPath = `${dashboardPath}.tmp`;
   await fs.writeFile(temporaryPath, updated, "utf8");
   await fs.copyFile(dashboardPath, `${dashboardPath}.bak`);
   await fs.rename(temporaryPath, dashboardPath);
+  if (contextPath) {
+    const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+    let context = await fs.readFile(contextPath, "utf8");
+    const lines = [`- 最近同步时间：${timestamp}`, `- 最近同步记录数：${rowsFromLedgerValues(values, role).length}`, `- 招聘复盘看板：${path.basename(dashboardPath)}`];
+    context = `${context.replace(/\n?- 最近同步时间：.*\n?- 最近同步记录数：.*\n?- 招聘复盘看板：.*/s, "").trim()}\n\n${lines.join("\n")}\n`;
+    await fs.writeFile(contextPath, context, "utf8");
+  }
   return { dashboardPath, records: rowsFromLedgerValues(values, role).length, stages };
 }
 
@@ -109,13 +125,18 @@ function argument(name) {
 }
 
 export async function runCli() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log("用途：将候选人台账同步到招聘数据复盘.html。\n用法：node workflow/scripts/sync-dashboard-data.mjs --ledger <candidate-ledger.xlsx> --dashboard <招聘数据复盘.html> --role <岗位名称>");
+    return;
+  }
   const ledgerPath = argument("--ledger");
   const dashboardPath = argument("--dashboard");
   const role = argument("--role");
+  const contextPath = argument("--context");
   if (!ledgerPath || !dashboardPath || !role) {
     throw new Error("用法：node workflow/scripts/sync-dashboard-data.mjs --ledger <candidate-ledger.xlsx> --dashboard <index.html> --role <岗位名称>");
   }
-  const result = await syncDashboard({ ledgerPath, dashboardPath, role });
+  const result = await syncDashboard({ ledgerPath, dashboardPath, role, contextPath });
   console.log(`已同步 ${result.records} 条记录到正式复盘看板：${result.dashboardPath}`);
 }
 

@@ -54,8 +54,18 @@ test("formal dashboard injection exits the default stage configuration modal", (
   const source = "<body><script>let STAGES_CONFIG; let rawData; function transformData(v){return v} function initTimeSelectors(){} function refreshData(){} function showPageMessage(){} const DEFAULT_STAGES_CONFIG=[]; function getStageColor(){return '#000'};</script></body>";
   const result = injectAutoLedgerData(source, [{ "候选人姓名": "候选人A" }], ["0-简历待评估"]);
 
-  assert.match(result, /document\.getElementById\('stageConfigModal'\)\.classList\.remove\('active'\)/);
-  assert.match(result, /document\.getElementById\('fileInput'\)\.disabled = false/);
+  assert.match(result, /stageConfigModal'\)\?\.classList\.remove\('active'\)/);
+  assert.match(result, /fileInput\.disabled = true/);
+});
+
+test("workflow-synced dashboard is labelled with its role and hides upload controls", () => {
+  const source = "<body><h1 data-dashboard-title>招聘数据分析</h1><button data-upload-entry>上传</button><script>let STAGES_CONFIG; let rawData; function transformData(v){return v} function initTimeSelectors(){} function refreshData(){} function showPageMessage(){} const DEFAULT_STAGES_CONFIG=[]; function getStageColor(){return '#000'};</script></body>";
+  const result = injectAutoLedgerData(source, [{ "候选人姓名": "候选人A" }], ["0-简历待评估"], { role: "AI 产品经理" });
+
+  assert.match(result, /AUTO_DASHBOARD_ROLE = "AI 产品经理"/);
+  assert.match(result, /AUTO_DASHBOARD_ROLE \+ '｜招聘数据复盘'/);
+  assert.match(result, /workflowSynced = 'true'/);
+  assert.match(result, /\[data-upload-entry\]/);
 });
 
 test("sync CLI gives a usable command when required arguments are absent", async () => {

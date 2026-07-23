@@ -5,10 +5,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const formalDashboardTemplate = path.resolve(here, "../templates/recruitment-review-dashboard.html");
 
-export async function createReviewDashboard(outputPath, { templatePath = formalDashboardTemplate } = {}) {
+export async function createReviewDashboard(outputPath, { templatePath = formalDashboardTemplate, force = false } = {}) {
   try {
     await fs.access(outputPath);
-    throw new Error(`看板已存在：${outputPath}。为避免覆盖已同步的数据，请使用现有文件或另存为新文件。`);
+    if (!force && !process.argv.includes("--force")) throw new Error(`看板已存在：${outputPath}。为避免覆盖已同步的数据，请使用现有文件或另存为新文件。`);
+    await fs.copyFile(outputPath, `${outputPath}.bak`);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -30,6 +31,10 @@ function argument(name) {
 
 const currentFile = fileURLToPath(import.meta.url);
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === pathToFileURL(currentFile).href) {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log("用途：创建岗位招聘数据复盘.html。\n用法：node workflow/scripts/create-review-dashboard.mjs --out <岗位目录/招聘数据复盘.html> [--force]");
+    process.exit(0);
+  }
   const outputPath = argument("--out");
   if (!outputPath) throw new Error("用法：node workflow/scripts/create-review-dashboard.mjs --out <岗位目录/index.html>");
   console.log(`已创建正式复盘看板：${await createReviewDashboard(outputPath)}`);

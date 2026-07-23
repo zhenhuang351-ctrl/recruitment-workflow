@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("workflow documentation uses index.html and leaves stage names to PIPELINE.json", async () => {
+test("workflow documentation uses the named review dashboard and leaves stage names to PIPELINE.json", async () => {
   const rules = await readFile("workflow/00-招聘规则.md", "utf8");
-  assert.match(rules, /index\.html/);
+  assert.match(rules, /招聘数据复盘\.html/);
   assert.match(rules, /PIPELINE\.json/);
   assert.doesNotMatch(rules, /0-简历待评估.*1-电话沟通.*业务一面/s);
 });
