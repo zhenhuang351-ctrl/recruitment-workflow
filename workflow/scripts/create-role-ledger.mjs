@@ -48,5 +48,9 @@ export async function buildLedger(roleName, pipeline, { capacity = DEFAULT_CANDI
 
 export async function writeLedger({ roleName, outputPath, pipeline, capacity }) { const workbook = await buildLedger(roleName, pipeline, { capacity }); await fs.mkdir(path.dirname(outputPath), { recursive: true }); await workbook.xlsx.writeFile(outputPath); return outputPath; }
 function argument(name) { const index = process.argv.indexOf(name); return index < 0 ? undefined : process.argv[index + 1]; }
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log("用途：按岗位流程创建候选人台账。\n用法：node workflow/scripts/create-role-ledger.mjs --role <岗位名称> --pipeline <PIPELINE.json> --out <candidate-ledger.xlsx> [--capacity <人数>]");
+  process.exit(0);
+}
 const currentFile = fileURLToPath(import.meta.url);
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === pathToFileURL(currentFile).href) { const roleName = argument("--role"); const outputPath = argument("--out"); const pipelinePath = argument("--pipeline"); const capacity = argument("--capacity") ?? DEFAULT_CANDIDATE_CAPACITY; if (!roleName || !outputPath || !pipelinePath) throw new Error("用法：--role <岗位名称> --pipeline <PIPELINE.json> --out <candidate-ledger.xlsx> [--capacity <人数>]"); await writeLedger({ roleName, outputPath, pipeline: await readPipeline(pipelinePath), capacity }); console.log(`已生成：${outputPath}`); }
