@@ -6,6 +6,21 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const formalDashboardTemplate = path.resolve(here, "../templates/recruitment-review-dashboard.html");
 
 export async function createReviewDashboard(outputPath, { templatePath = formalDashboardTemplate, force = false } = {}) {
+  const legacyPath = path.join(path.dirname(outputPath), "index.html");
+  if (path.basename(outputPath) === "招聘数据复盘.html") {
+    try {
+      await fs.access(outputPath);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        try {
+          await fs.rename(legacyPath, outputPath);
+          return outputPath;
+        } catch (legacyError) {
+          if (legacyError.code !== "ENOENT") throw legacyError;
+        }
+      } else throw error;
+    }
+  }
   try {
     await fs.access(outputPath);
     if (!force && !process.argv.includes("--force")) throw new Error(`看板已存在：${outputPath}。为避免覆盖已同步的数据，请使用现有文件或另存为新文件。`);

@@ -98,3 +98,16 @@ test("a role can create the formal template and synchronise a configured ledger 
   assert.match(result, /"候选人姓名":"候选人A"/);
   await fs.rm(directory, { recursive: true, force: true });
 });
+
+test("creating the named dashboard migrates a legacy index.html without losing synced content", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "legacy-dashboard-"));
+  const legacyPath = path.join(directory, "index.html");
+  const dashboardPath = path.join(directory, "招聘数据复盘.html");
+  await fs.writeFile(legacyPath, "<html>已同步候选人数据</html>", "utf8");
+
+  await createReviewDashboard(dashboardPath);
+
+  assert.equal(await fs.readFile(dashboardPath, "utf8"), "<html>已同步候选人数据</html>");
+  await assert.rejects(fs.access(legacyPath));
+  await fs.rm(directory, { recursive: true, force: true });
+});
