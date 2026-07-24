@@ -40,7 +40,14 @@ test("resume intake asks for source and received date before ledger writeback", 
 
 test("resume template puts conclusion and score before the evidence details", async () => {
   const text = await readFile("workflow/templates/简历评估提示词.md", "utf8");
-  for (const term of ["结论先行", "能力证据得分", "证据覆盖率", "姓名｜建议", "**待核实**"]) {
+  for (const term of ["结论先行", "能力证据得分", "证据覆盖率", "姓名｜建议", "**待核实**", "直接证据", "间接证据", "暂无证据", "0–10", "本人责任", "信息缺口"]) {
+    assert.match(text, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+});
+
+test("candidate evidence record uses one 0–10 card with traceable evidence fields", async () => {
+  const text = await readFile("workflow/templates/CANDIDATE_RECORD.md", "utf8");
+  for (const term of ["能力证据得分：{{x/10}}", "直接证据", "间接证据", "暂无证据", "证据强度（0–10）", "简历原文与来源位置", "信息缺口", "电话核验问题"]) {
     assert.match(text, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
 });
